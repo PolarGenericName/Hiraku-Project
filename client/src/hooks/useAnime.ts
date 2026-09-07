@@ -1,0 +1,278 @@
+/**
+ * Hooks para buscar dados de animes
+ * AniList para catálogo + AnimeFire para episódios PT-BR
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import {
+  getTrendingAnime,
+  getPopularAnime,
+  getSeasonalAnime,
+  getMediaById,
+  type AniListMedia,
+} from '@/lib/anilist';
+import {
+  findAnimeSlug,
+  getAnimeDetails,
+  getSeasons,
+  getEpisodes,
+  getRecommendations,
+} from '@/providers';
+import type { Season, Episode, Recommendation } from '@/providers/types';
+
+interface UseAnimeListResult {
+  animes: AniListMedia[];
+  loading: boolean;
+  error: string | null;
+}
+
+interface UseAnimeDetailsResult {
+  anime: AniListMedia | null;
+  providerSlug: string | null;
+  providerDetails: {
+    ageRating?: string;
+    nextAir?: { date: string; time: string; isNewSeason: boolean };
+  } | null;
+  loading: boolean;
+  error: string | null;
+}
+
+interface UseSeasonsResult {
+  seasons: Season[];
+  loading: boolean;
+  error: string | null;
+}
+
+interface UseEpisodesResult {
+  episodes: Episode[];
+  loading: boolean;
+  error: string | null;
+}
+
+// Hook para animes em tendência
+export function useTrendingAnime(limit: number = 10): UseAnimeListResult {
+  const [animes, setAnimes] = useState<AniListMedia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getTrendingAnime(1, limit);
+        setAnimes(data);
+      } catch (err) {
+        setError('Erro ao carregar tendências');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [limit]);
+
+  return { animes, loading, error };
+}
+
+// Hook para animes populares
+export function usePopularAnime(limit: number = 10): UseAnimeListResult {
+  const [animes, setAnimes] = useState<AniListMedia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getPopularAnime(1, limit);
+        setAnimes(data);
+      } catch (err) {
+        setError('Erro ao carregar populares');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [limit]);
+
+  return { animes, loading, error };
+}
+
+// Hook para animes da temporada
+export function useSeasonalAnime(
+  season: string,
+  year: number,
+  limit: number = 10
+): UseAnimeListResult {
+  const [animes, setAnimes] = useState<AniListMedia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getSeasonalAnime(season, year, 1, limit);
+        setAnimes(data);
+      } catch (err) {
+        setError('Erro ao carregar temporada');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [season, year, limit]);
+
+  return { animes, loading, error };
+}
+
+// Hook para detalhes do anime + provider slug
+export function useAnimeDetails(id: number | null): UseAnimeDetailsResult {
+  const [anime, setAnime] = useState<AniListMedia | null>(null);
+  const [providerSlug, setProviderSlug] = useState<string | null>(null);
+  const [providerDetails, setProviderDetails] = useState<UseAnimeDetailsResult['providerDetails']>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // 1. Fetch AniList metadata
+        const media = await getMediaById(id);
+        setAnime(media);
+
+        if (!media?.title?.romaji) {
+          setLoading(false);
+          return;
+        }
+
+        // 2. Find the correct AnimeFire slug by matching title
+        const slug = await findAnimeSlug(
+          media.title.romaji,
+          media.title.english
+        );
+
+        setProviderSlug(slug);
+
+        // 3. Fetch AnimeFire details for PT-BR synopsis and extra data
+        if (slug) {
+          const details = await getAnimeDetails(slug);
+          if (details) {
+            setAnime((prev) => prev ? {
+              ...prev,
+              description: details.description || prev.description,
+            } : prev);
+            setProviderDetails({
+              ageRating: details.ageRating,
+              nextAir: details.nextAir,
+            });
+          }
+        }
+      } catch (err) {
+        setError('Erro ao carregar detalhes');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [id]);
+
+  return { anime, providerSlug, providerDetails, loading, error };
+}
+
+// Hook para temporadas - recebe o slug já resolvido do provider
+export function useSeasons(slug: string | null): UseSeasonsResult {
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!slug) {
+      setSeasons([]);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getSeasons(slug);
+        setSeasons(data);
+      } catch (err) {
+        setError('Erro ao carregar temporadas');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [slug]);
+
+  return { seasons, loading, error };
+}
+
+// Hook para episódios - recebe o slug já resolvido do provider
+export function useEpisodes(
+  slug: string | null,
+  seasonNumber?: number
+): UseEpisodesResult {
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!slug) {
+      setEpisodes([]);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getEpisodes(slug, seasonNumber);
+        setEpisodes(data);
+      } catch (err) {
+        setError('Erro ao carregar episódios');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [slug, seasonNumber]);
+
+  return { episodes, loading, error };
+}
+
+// Hook para recomendações
+export function useRecommendations(slug: string | null): { recommendations: Recommendation[]; loading: boolean; error: string | null } {
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!slug) {
+      setRecommendations([]);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getRecommendations(slug);
+        setRecommendations(data);
+      } catch (err) {
+        setError('Erro ao carregar recomendações');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [slug]);
+
+  return { recommendations, loading, error };
+}

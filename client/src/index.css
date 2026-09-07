@@ -1,0 +1,232 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  /* Cores primárias: Roxo futurista */
+  --primary: #7c3aed; /* Roxo vibrante */
+  --primary-foreground: #ffffff;
+  --sidebar-primary: #6d28d9; /* Roxo mais escuro */
+  --sidebar-primary-foreground: #ffffff;
+  
+  /* Cores de gráficos em tons de roxo */
+  --chart-1: #a78bfa;
+  --chart-2: #8b5cf6;
+  --chart-3: #7c3aed;
+  --chart-4: #6d28d9;
+  --chart-5: #5b21b6;
+  
+  --radius: 0.65rem;
+  
+  /* Fundo: Preto muito escuro com toque de roxo */
+  --background: #0f0a1a;
+  --foreground: #ffffff;
+  
+  /* Cards: Preto com toque de roxo */
+  --card: #1a1530;
+  --card-foreground: #ffffff;
+  
+  /* Popover */
+  --popover: #1a1530;
+  --popover-foreground: #ffffff;
+  
+  /* Secundário: Roxo escuro */
+  --secondary: #3f2c6b;
+  --secondary-foreground: #ffffff;
+  
+  /* Muted: Tons cinzentos escuros */
+  --muted: #2d2545;
+  --muted-foreground: #b0b0b0;
+  
+  /* Accent: Roxo vibrante */
+  --accent: #7c3aed;
+  --accent-foreground: #ffffff;
+  
+  /* Destructive */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  
+  /* Borders e inputs */
+  --border: #3f2c6b;
+  --input: #2d2545;
+  --ring: #7c3aed;
+  
+  /* Sidebar */
+  --sidebar: #0f0a1a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-accent: #7c3aed;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #3f2c6b;
+  --sidebar-ring: #7c3aed;
+}
+
+.dark {
+  --primary: #7c3aed;
+  --primary-foreground: #ffffff;
+  --sidebar-primary: #6d28d9;
+  --sidebar-primary-foreground: #ffffff;
+  --background: #0f0a1a;
+  --foreground: #ffffff;
+  --card: #1a1530;
+  --card-foreground: #ffffff;
+  --popover: #1a1530;
+  --popover-foreground: #ffffff;
+  --secondary: #3f2c6b;
+  --secondary-foreground: #ffffff;
+  --muted: #2d2545;
+  --muted-foreground: #b0b0b0;
+  --accent: #7c3aed;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #3f2c6b;
+  --input: #2d2545;
+  --ring: #7c3aed;
+  --chart-1: #a78bfa;
+  --chart-2: #8b5cf6;
+  --chart-3: #7c3aed;
+  --chart-4: #6d28d9;
+  --chart-5: #5b21b6;
+  --sidebar: #0f0a1a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-accent: #7c3aed;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #3f2c6b;
+  --sidebar-ring: #7c3aed;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+      max-width: 1280px;
+    }
+  }
+
+  /* Estilo customizado para cards futuristas */
+  .card-futuristic {
+    @apply bg-card border border-border rounded-lg p-4 transition-all duration-300 hover:border-accent hover:shadow-lg hover:shadow-accent/20;
+  }
+
+  /* Estilo para botões futuristas */
+  .btn-futuristic {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:shadow-lg hover:shadow-accent/30 active:scale-95;
+  }
+
+  /* Estilo para inputs futuristas */
+  .input-futuristic {
+    @apply bg-input border border-border rounded-lg px-4 py-2 text-foreground placeholder-muted-foreground transition-all duration-300 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50;
+  }
+
+  /* Gradiente futurista */
+  .gradient-futuristic {
+    @apply bg-gradient-to-br from-accent via-background to-background;
+  }
+}
+
+/* Fonte customizada */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+html {
+  font-family: 'Poppins', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+}
+
+code, pre {
+  font-family: 'Space Mono', monospace;
+}
+
+/* Scrollbar customizado */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
