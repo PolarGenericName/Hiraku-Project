@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates } from '@/lib/anilist';
 import { batchCheckAvailability } from '@/providers';
-import { Loader2, Search as SearchIcon, Star, X, Play, AlertCircle } from 'lucide-react';
+import { Loader2, Search as SearchIcon, Bookmark, Star, X, Play, AlertCircle } from 'lucide-react';
 
 interface SearchFilters {
   season?: string;
@@ -39,10 +39,12 @@ export default function Search() {
     const season = params.get('season');
     const year = params.get('year');
     const sort = params.get('sort');
+    const genre = params.get('genre');
 
     if (q) setQuery(q);
     if (season) setFilters((f) => ({ ...f, season }));
     if (year) setFilters((f) => ({ ...f, year: Number(year) }));
+    if (genre) setFilters((f) => ({ ...f, genre }));
   }, [location]);
 
   // Search when query or filters change
@@ -66,6 +68,9 @@ export default function Search() {
               id: anime.id.toString(),
               title: anime.title?.romaji || anime.title?.english || '',
               titleAlternative: anime.title?.english,
+              year: anime.seasonYear,
+              episodes: anime.episodes,
+              status: anime.status,
             }));
             const available = await batchCheckAvailability(animesToCheck);
             setAvailableIds(available);
@@ -243,7 +248,7 @@ export default function Search() {
                       onClick={() => setLocation(`/anime/${result.id}`)}
                       className="cursor-pointer group"
                     >
-                      <div className="relative aspect-[9/13] rounded-xl overflow-hidden mb-2 bg-gray-900 border border-white/10 group-hover:border-purple-500/50 transition-all duration-300">
+                      <div className="relative aspect-[9/13] rounded-xl overflow-hidden mb-2 bg-gray-900 group-hover:border-purple-500/50 transition-all duration-300">
                         {result.thumbnail ? (
                           <img
                             src={result.thumbnail}

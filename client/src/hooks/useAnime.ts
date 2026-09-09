@@ -160,7 +160,10 @@ export function useAnimeDetails(id: number | null): UseAnimeDetailsResult {
         // 2. Find the correct AnimeFire slug by matching title
         const slug = await findAnimeSlug(
           media.title.romaji,
-          media.title.english
+          media.title.english,
+          media.seasonYear,
+          media.episodes,
+          media.status
         );
 
         setProviderSlug(slug);

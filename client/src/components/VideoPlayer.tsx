@@ -6,16 +6,18 @@ import {
   Languages, Gauge, Zap
 } from 'lucide-react';
 import type { EpisodeStream } from '@/providers/types';
+import { saveEpisodeProgress, getResumeTime } from '@/lib/watchProgress';
 
 interface VideoPlayerProps {
   stream: EpisodeStream;
+  animeId: string;
   onClose: () => void;
   onNextEpisode?: () => void;
 }
 
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
-export default function VideoPlayer({ stream, onClose, onNextEpisode }: VideoPlayerProps) {
+export default function VideoPlayer({ stream, animeId, onClose, onNextEpisode }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -143,11 +145,32 @@ export default function VideoPlayer({ stream, onClose, onNextEpisode }: VideoPla
 
     player.initialize(video, proxyUrl, true);
 
+    let lastSaveTime = 0;
+
     const onPlay = () => { setIsPlaying(true); setIsBuffering(false); };
-    const onPause = () => setIsPlaying(false);
-    const onTimeUpdate = () => setCurrentTime(video.currentTime);
+    const onPause = () => {
+      setIsPlaying(false);
+      // Save progress on pause
+      if (video.currentTime > 0 && video.duration > 0) {
+        saveEpisodeProgress(animeId, stream.episodeId, stream.number, stream.season, video.currentTime, video.duration);
+      }
+    };
+    const onTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+      // Save progress every 5 seconds
+      if (video.currentTime - lastSaveTime >= 5 && video.duration > 0) {
+        lastSaveTime = video.currentTime;
+        saveEpisodeProgress(animeId, stream.episodeId, stream.number, stream.season, video.currentTime, video.duration);
+      }
+    };
     const onLoadedMetadata = () => {
       setDuration(video.duration);
+      // Resume from saved position
+      const resumeTime = getResumeTime(animeId, stream.episodeId);
+      if (resumeTime > 0 && video.currentTime === 0) {
+        video.currentTime = resumeTime;
+        console.log('[Player] Resuming from:', resumeTime);
+      }
       if (!tryGetQualities()) {
         setTimeout(tryGetQualities, 1000);
         setTimeout(tryGetQualities, 3000);
@@ -156,7 +179,13 @@ export default function VideoPlayer({ stream, onClose, onNextEpisode }: VideoPla
     };
     const onWaiting = () => setIsBuffering(true);
     const onCanPlay = () => setIsBuffering(false);
-    const onEnded = () => setIsPlaying(false);
+    const onEnded = () => {
+      setIsPlaying(false);
+      // Mark as completed
+      if (video.duration > 0) {
+        saveEpisodeProgress(animeId, stream.episodeId, stream.number, stream.season, video.duration, video.duration);
+      }
+    };
 
     video.addEventListener('play', onPlay);
     video.addEventListener('pause', onPause);
@@ -213,6 +242,18 @@ export default function VideoPlayer({ stream, onClose, onNextEpisode }: VideoPla
     return () => { if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current); };
   }, [isPlaying, resetHideTimer]);
 
+  const saveCurrentProgress = useCallback(() => {
+    const video = videoRef.current;
+    if (video && video.currentTime > 0 && video.duration > 0) {
+      saveEpisodeProgress(animeId, stream.episodeId, stream.number, stream.season, video.currentTime, video.duration);
+    }
+  }, [animeId, stream]);
+
+  const handleClose = useCallback(() => {
+    saveCurrentProgress();
+    onClose();
+  }, [saveCurrentProgress, onClose]);
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -220,7 +261,7 @@ export default function VideoPlayer({ stream, onClose, onNextEpisode }: VideoPla
         else if (showLanguages) setShowLanguages(false);
         else if (showSpeedMenu) setShowSpeedMenu(false);
         else if (showQualityMenu) setShowQualityMenu(false);
-        else onClose();
+        else handleClose();
       }
       if (e.key === ' ' || e.key === 'k') { e.preventDefault(); togglePlay(); }
       if (e.key === 'f') toggleFullscreen();
@@ -347,7 +388,7 @@ export default function VideoPlayer({ stream, onClose, onNextEpisode }: VideoPla
         {/* Top bar */}
         <div className="absolute top-0 left-0 right-0 p-5 flex items-start justify-between">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200 text-white hover:scale-110"
           >
             <X size={22} />

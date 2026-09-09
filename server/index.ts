@@ -101,6 +101,50 @@ async function startServer() {
     }
   });
 
+  // YouTube trailer search - fallback when AniList has no trailer
+  app.get("/api/trailer-search", async (req, res) => {
+    const query = req.query.q as string;
+    if (!query) {
+      return res.status(400).json({ error: "Missing q parameter" });
+    }
+
+    console.log("[TrailerSearch] Searching YouTube for:", query);
+
+    try {
+      const searchQuery = encodeURIComponent(`${query} official trailer`);
+      const response = await fetch(`https://www.youtube.com/results?search_query=${searchQuery}`, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+      });
+
+      const html = await response.text();
+
+      // Extract video IDs from YouTube search results
+      // YouTube embeds video data in JSON within the HTML
+      const videoIdMatch = html.match(/"videoId":"([^"]+)"/);
+      if (!videoIdMatch) {
+        console.log("[TrailerSearch] No video found");
+        return res.status(404).json({ error: "No trailer found" });
+      }
+
+      const videoId = videoIdMatch[1];
+      console.log("[TrailerSearch] Found video:", videoId);
+
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.json({
+        videoId,
+        thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+        embedUrl: `https://www.youtube.com/embed/${videoId}`,
+        watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      });
+    } catch (error: any) {
+      console.error("[TrailerSearch] Error:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // CORS proxy - forwards any URL
   app.get("/api/proxy", async (req, res) => {
     const targetUrl = req.query.url as string;

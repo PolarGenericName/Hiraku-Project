@@ -9,7 +9,7 @@ import {
 } from '@/hooks/useAnime';
 import { anilistToAnimeResult } from '@/lib/anilist';
 import { findAnimeSlug, getAnimeDetails } from '@/providers';
-import { Loader2, Play, Star, ChevronLeft, ChevronRight, Film, X } from 'lucide-react';
+import { Loader2, Play, Bookmark, ChevronLeft, ChevronRight, Film, X, Star } from 'lucide-react';
 
 function getCurrentSeason() {
   const month = new Date().getMonth();
@@ -88,7 +88,10 @@ export default function Home() {
         try {
           const slug = await findAnimeSlug(
             anime.title?.romaji || '',
-            anime.title?.english
+            anime.title?.english,
+            anime.seasonYear,
+            anime.episodes,
+            anime.status
           );
           if (slug) {
             const details = await getAnimeDetails(slug);
@@ -196,7 +199,7 @@ export default function Home() {
                   <img
                     src={heroAnime.coverImage.large}
                     alt=""
-                    className="w-24 h-36 object-cover rounded-xl shadow-2xl border border-white/10 flex-shrink-0 animate-[fadeIn_0.6s_ease-out_0.2s_both]"
+                    className="w-24 h-36 object-cover rounded-xl shadow-2xl flex-shrink-0 animate-[fadeIn_0.6s_ease-out_0.2s_both]"
                   />
                 )}
                 <div className="min-w-0 animate-[fadeSlideUp_0.7s_ease-out_0.1s_both]">
@@ -258,11 +261,11 @@ export default function Home() {
                   onClick={(e) => toggleFavorite(String(heroAnime.id), e)}
                   className={`p-2.5 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 ${
                     favorites.has(String(heroAnime.id))
-                      ? 'bg-yellow-500/20 text-yellow-400'
-                      : 'text-gray-400 hover:bg-yellow-500/20 hover:text-yellow-400'
+                      ? 'bg-purple-500/20 text-purple-400'
+                      : 'text-gray-400 hover:bg-purple-500/20 hover:text-purple-400'
                   }`}
                 >
-                  <Star size={18} className={favorites.has(String(heroAnime.id)) ? 'fill-current' : ''} />
+                  <Bookmark size={18} className={favorites.has(String(heroAnime.id)) ? 'fill-current' : ''} />
                 </button>
 
                 {heroAnime.trailer?.site === 'youtube' && (
@@ -318,7 +321,7 @@ export default function Home() {
             >
               <X size={24} />
             </button>
-            <div className="aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/10">
+            <div className="aspect-video rounded-xl overflow-hidden shadow-2xl">
               <iframe
                 src={`https://www.youtube.com/embed/${trailerAnime.trailer.id}?autoplay=1&rel=0`}
                 title={`Trailer - ${trailerAnime.title?.english || trailerAnime.title?.romaji}`}
@@ -402,7 +405,7 @@ export default function Home() {
         {/* 4. Top 10 */}
         <section>
           <h2 className="text-2xl font-bold text-white mb-4 px-8 md:px-16">Top 10</h2>
-          <HorizontalScroll>
+          <div className="flex overflow-visible px-8 md:px-16 pb-4 pt-4">
             {[...heroAnimes, ...popular].slice(0, 10).map((anime, index) => {
               const result = anilistToAnimeResult(anime);
               return (
@@ -423,7 +426,7 @@ export default function Home() {
                   </span>
 
                   {/* Anime Cover - overlaps number */}
-                  <div className="relative w-32 h-48 rounded-lg overflow-hidden bg-gray-900 border border-white/10 group-hover/card:border-purple-500/50 transition-all duration-300 -ml-8 z-[1] shadow-2xl group-hover/card:shadow-[0_0_30px_rgba(124,58,237,0.4)]">
+                  <div className="relative w-32 h-48 rounded-lg overflow-hidden bg-gray-900 group-hover/card:border-purple-500/50 transition-all duration-300 -ml-8 z-[1] shadow-2xl group-hover/card:shadow-[0_0_30px_rgba(124,58,237,0.4)]">
                     {/* Gradient glow towards number */}
                     <div className="absolute inset-y-0 -left-6 w-6 bg-gradient-to-r from-black/50 to-transparent z-[2]" />
                     {result.thumbnail ? (
@@ -441,7 +444,7 @@ export default function Home() {
                 </div>
               );
             })}
-          </HorizontalScroll>
+          </div>
         </section>
 
         {/* 5. Romances */}
@@ -571,7 +574,7 @@ function AnimeCard({
       onClick={onClick}
       className="flex-shrink-0 w-44 cursor-pointer group/card transition-all duration-300 hover:scale-105 hover:z-10"
     >
-      <div className="relative aspect-[9/13] rounded-xl overflow-hidden mb-2 bg-gray-900 border border-white/10 group-hover/card:border-purple-500/50 transition-all duration-300 group-hover/card:shadow-[0_0_30px_rgba(124,58,237,0.4)]">
+      <div className="relative aspect-[9/13] rounded-xl overflow-hidden mb-2 bg-gray-900 group-hover/card:border-purple-500/50 transition-all duration-300 group-hover/card:shadow-[0_0_30px_rgba(124,58,237,0.4)]">
         {result.thumbnail ? (
           <img
             src={result.thumbnail}
@@ -589,11 +592,11 @@ function AnimeCard({
           onClick={(e) => onToggleFavorite(result.id, e)}
           className={`absolute top-2 right-2 p-1.5 rounded-lg transition-all duration-200 ${
             isFavorite
-              ? 'bg-yellow-500/90 text-white'
+              ? 'bg-purple-500/90 text-white'
               : 'bg-black/50 text-gray-400 opacity-0 group-hover/card:opacity-100'
           }`}
         >
-          <Star size={12} className={isFavorite ? 'fill-current' : ''} />
+          <Bookmark size={12} className={isFavorite ? 'fill-current' : ''} />
         </button>
       </div>
 

@@ -41,6 +41,7 @@ export class AnimeFireProvider implements AnimeProvider {
         title: item.title,
         thumbnail: item.poster_src,
         type: 'TV',
+        year: item.year,
       }));
 
       console.log('[AnimeFire] Search results:', results.length);
