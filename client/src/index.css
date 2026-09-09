@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -58,12 +59,12 @@
   
   --radius: 0.65rem;
   
-  /* Fundo: Preto muito escuro com toque de roxo */
-  --background: #0f0a1a;
+  /* Fundo: Preto puro */
+  --background: #000000;
   --foreground: #ffffff;
   
   /* Cards: Preto com toque de roxo */
-  --card: #1a1530;
+  --card: #0a0a0f;
   --card-foreground: #ffffff;
   
   /* Popover */
@@ -92,7 +93,7 @@
   --ring: #7c3aed;
   
   /* Sidebar */
-  --sidebar: #0f0a1a;
+  --sidebar: #000000;
   --sidebar-foreground: #ffffff;
   --sidebar-accent: #7c3aed;
   --sidebar-accent-foreground: #ffffff;
@@ -105,9 +106,9 @@
   --primary-foreground: #ffffff;
   --sidebar-primary: #6d28d9;
   --sidebar-primary-foreground: #ffffff;
-  --background: #0f0a1a;
+  --background: #000000;
   --foreground: #ffffff;
-  --card: #1a1530;
+  --card: #0a0a0f;
   --card-foreground: #ffffff;
   --popover: #1a1530;
   --popover-foreground: #ffffff;
@@ -127,7 +128,7 @@
   --chart-3: #7c3aed;
   --chart-4: #6d28d9;
   --chart-5: #5b21b6;
-  --sidebar: #0f0a1a;
+  --sidebar: #000000;
   --sidebar-foreground: #ffffff;
   --sidebar-accent: #7c3aed;
   --sidebar-accent-foreground: #ffffff;
@@ -183,30 +184,7 @@
       max-width: 1280px;
     }
   }
-
-  /* Estilo customizado para cards futuristas */
-  .card-futuristic {
-    @apply bg-card border border-border rounded-lg p-4 transition-all duration-300 hover:border-accent hover:shadow-lg hover:shadow-accent/20;
-  }
-
-  /* Estilo para botões futuristas */
-  .btn-futuristic {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:shadow-lg hover:shadow-accent/30 active:scale-95;
-  }
-
-  /* Estilo para inputs futuristas */
-  .input-futuristic {
-    @apply bg-input border border-border rounded-lg px-4 py-2 text-foreground placeholder-muted-foreground transition-all duration-300 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50;
-  }
-
-  /* Gradiente futurista */
-  .gradient-futuristic {
-    @apply bg-gradient-to-br from-accent via-background to-background;
-  }
 }
-
-/* Fonte customizada */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
 
 html {
   font-family: 'Poppins', sans-serif;
@@ -229,4 +207,57 @@ code, pre {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Glass morphism utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.glass-purple {
+  background: rgba(124, 58, 237, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+/* Glow effects */
+.glow-purple {
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.3),
+              0 0 60px rgba(124, 58, 237, 0.1);
+}
+
+.glow-purple-sm {
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.2);
+}
+
+/* Hero animations */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

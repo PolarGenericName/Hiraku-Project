@@ -10,13 +10,12 @@ import type {
   Episode,
   Recommendation,
   EpisodeStream,
-  StreamUrl,
 } from './types';
 import { AnimeFireProvider } from './animefire';
 
 const animefireProvider = new AnimeFireProvider();
 
-export const provider: AnimeProvider = animefireProvider;
+const provider: AnimeProvider = animefireProvider;
 
 export async function searchAnime(query: string): Promise<AnimeResult[]> {
   return provider.search(query);
@@ -40,10 +39,6 @@ export async function getRecommendations(animeId: string): Promise<Recommendatio
 
 export async function getEpisodeStream(episodeId: string): Promise<EpisodeStream | null> {
   return provider.getEpisodeStream(episodeId);
-}
-
-export async function getStreamUrl(animeId: string, episodeNumber: string): Promise<StreamUrl | null> {
-  return provider.getStreamUrl(animeId, episodeNumber);
 }
 
 function normalizeTitle(title: string): string {
@@ -100,8 +95,38 @@ export async function findAnimeSlug(
     console.log('[FindSlug] No match for', title);
   }
 
-  // Fallback: first result from first title search
-  console.log('[FindSlug] Falling back to first result');
-  const fallbackResults = await searchAnime(titles[0]);
-  return fallbackResults.length > 0 ? fallbackResults[0].id : null;
+  // No reliable match found - return null instead of wrong result
+  console.log('[FindSlug] No reliable match found');
+  return null;
+}
+
+/**
+ * Batch check availability for multiple anime (used in search results).
+ * Returns a Set of AniList IDs that are available on AnimeFire.
+ */
+export async function batchCheckAvailability(
+  animes: { id: string; title: string; titleAlternative?: string }[]
+): Promise<Set<string>> {
+  const available = new Set<string>();
+
+  // Check in parallel, max 5 at a time to avoid rate limiting
+  const batchSize = 5;
+  for (let i = 0; i < animes.length; i += batchSize) {
+    const batch = animes.slice(i, i + batchSize);
+    const results = await Promise.allSettled(
+      batch.map(async (anime) => {
+        const slug = await findAnimeSlug(anime.title, anime.titleAlternative);
+        if (slug) {
+          try {
+            const episodes = await getEpisodes(slug);
+            if (episodes.length > 0) {
+              available.add(anime.id);
+            }
+          } catch {}
+        }
+      })
+    );
+  }
+
+  return available;
 }

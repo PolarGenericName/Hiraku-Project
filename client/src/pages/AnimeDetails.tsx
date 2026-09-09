@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useAnimeDetails, useSeasons, useEpisodes, useRecommendations } from '@/hooks/useAnime';
 import { getEpisodeStream } from '@/providers';
+import { searchAniList } from '@/lib/anilist';
 import type { EpisodeStream } from '@/providers/types';
 import VideoPlayer from '@/components/VideoPlayer';
 import { Loader2, ArrowLeft, Play, Star, Clock, Calendar, Search, ChevronDown, AlertCircle, Tv } from 'lucide-react';
@@ -24,6 +25,24 @@ export default function AnimeDetails() {
   const [showSeasonMenu, setShowSeasonMenu] = useState(false);
   const [playerStream, setPlayerStream] = useState<EpisodeStream | null>(null);
   const [loadingPlayer, setLoadingPlayer] = useState(false);
+
+  const [loadingRec, setLoadingRec] = useState<string | null>(null);
+
+  const handleRecClick = async (rec: { id: string; title: string }) => {
+    setLoadingRec(rec.id);
+    try {
+      const results = await searchAniList(rec.title);
+      if (results.length > 0) {
+        setLocation(`/anime/${results[0].id}`);
+      } else {
+        setLocation(`/search?q=${encodeURIComponent(rec.title)}`);
+      }
+    } catch {
+      setLocation(`/search?q=${encodeURIComponent(rec.title)}`);
+    } finally {
+      setLoadingRec(null);
+    }
+  };
 
   // Auto-select first season
   useEffect(() => {
@@ -330,7 +349,7 @@ export default function AnimeDetails() {
         ) : !providerSlug ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground text-sm">
-              Este anime pode não estar disponível no AnimeFire.
+              Este anime ou conteúdo não está disponível.
             </p>
           </div>
         ) : filteredEpisodes.length > 0 ? (
@@ -401,7 +420,8 @@ export default function AnimeDetails() {
             {recommendations.slice(0, 12).map((rec) => (
               <button
                 key={rec.id}
-                onClick={() => setLocation(`/anime/${rec.id}`)}
+                onClick={() => handleRecClick(rec)}
+                disabled={loadingRec === rec.id}
                 className="flex-shrink-0 w-36 group"
               >
                 <div className="relative aspect-[3/4] rounded-lg overflow-hidden bg-muted mb-2">

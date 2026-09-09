@@ -9,6 +9,10 @@ import {
   getPopularAnime,
   getSeasonalAnime,
   getMediaById,
+  getHeroAnimes,
+  getUpcomingAnime,
+  getAnimeByGenre,
+  filterSeasonDuplicates,
   type AniListMedia,
 } from '@/lib/anilist';
 import {
@@ -59,8 +63,8 @@ export function useTrendingAnime(limit: number = 10): UseAnimeListResult {
     const load = async () => {
       try {
         setLoading(true);
-        const data = await getTrendingAnime(1, limit);
-        setAnimes(data);
+        const data = await getTrendingAnime(1, limit * 2);
+        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
       } catch (err) {
         setError('Erro ao carregar tendências');
       } finally {
@@ -83,8 +87,8 @@ export function usePopularAnime(limit: number = 10): UseAnimeListResult {
     const load = async () => {
       try {
         setLoading(true);
-        const data = await getPopularAnime(1, limit);
-        setAnimes(data);
+        const data = await getPopularAnime(1, limit * 2);
+        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
       } catch (err) {
         setError('Erro ao carregar populares');
       } finally {
@@ -111,8 +115,8 @@ export function useSeasonalAnime(
     const load = async () => {
       try {
         setLoading(true);
-        const data = await getSeasonalAnime(season, year, 1, limit);
-        setAnimes(data);
+        const data = await getSeasonalAnime(season, year, 1, limit * 2);
+        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
       } catch (err) {
         setError('Erro ao carregar temporada');
       } finally {
@@ -275,4 +279,76 @@ export function useRecommendations(slug: string | null): { recommendations: Reco
   }, [slug]);
 
   return { recommendations, loading, error };
+}
+
+// Hook para hero slider - animes com trailer, banner, prioridade por popularidade
+export function useHeroAnimes(limit: number = 5): UseAnimeListResult {
+  const [animes, setAnimes] = useState<AniListMedia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getHeroAnimes(limit * 2);
+        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
+      } catch (err) {
+        setError('Erro ao carregar hero');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [limit]);
+
+  return { animes, loading, error };
+}
+
+// Hook para animes que vão lançar (Novidades)
+export function useUpcomingAnime(limit: number = 10): UseAnimeListResult {
+  const [animes, setAnimes] = useState<AniListMedia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getUpcomingAnime(1, limit * 2);
+        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
+      } catch (err) {
+        setError('Erro ao carregar novidades');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [limit]);
+
+  return { animes, loading, error };
+}
+
+// Hook para animes por gênero (ex: Romance)
+export function useAnimeByGenre(genre: string, limit: number = 10): UseAnimeListResult {
+  const [animes, setAnimes] = useState<AniListMedia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getAnimeByGenre(genre, 1, limit * 2);
+        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
+      } catch (err) {
+        setError(`Erro ao carregar animes de ${genre}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [genre, limit]);
+
+  return { animes, loading, error };
 }

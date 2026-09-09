@@ -1,9 +1,105 @@
 import express from "express";
 import { createServer } from "http";
 
+const ANILIST_API = "https://graphql.anilist.co";
+
+const TRAILER_QUERY = `
+  query ($id: Int) {
+    Media(id: $id, type: ANIME) {
+      id
+      title { romaji english }
+      trailer {
+        id
+        site
+        thumbnail
+      }
+    }
+  }
+`;
+
+async function fetchAniListTrailer(anilistId: number) {
+  const response = await fetch(ANILIST_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: TRAILER_QUERY, variables: { id: anilistId } }),
+  });
+
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  const media = data?.data?.Media;
+
+  if (!media?.trailer || media.trailer.site !== "youtube") return null;
+
+  return {
+    anilistId: media.id,
+    title: media.title?.romaji || media.title?.english,
+    youtubeId: media.trailer.id,
+    thumbnail: media.trailer.thumbnail || `https://img.youtube.com/vi/${media.trailer.id}/mqdefault.jpg`,
+    embedUrl: `https://www.youtube.com/embed/${media.trailer.id}`,
+    watchUrl: `https://www.youtube.com/watch?v=${media.trailer.id}`,
+  };
+}
+
 async function startServer() {
   const app = express();
+  app.use(express.json());
   const server = createServer(app);
+
+  // AniList GraphQL proxy - avoids CORS and rate limit issues from browser
+  app.post("/api/anilist", async (req, res) => {
+    console.log("[AniList] Received request, body keys:", Object.keys(req.body || {}));
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(ANILIST_API, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "Origin": "https://hiraku.app",
+          "Referer": "https://hiraku.app/",
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      clearTimeout(timeout);
+      console.log("[AniList] Upstream status:", response.status);
+
+      const data = await response.json();
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.json(data);
+    } catch (error: any) {
+      console.error("[AniList] Error:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Trailer endpoint - fetches YouTube trailer from AniList
+  app.get("/api/trailer/:id", async (req, res) => {
+    const anilistId = parseInt(req.params.id, 10);
+    if (isNaN(anilistId)) {
+      return res.status(400).json({ error: "Invalid AniList ID" });
+    }
+
+    console.log("[Trailer] Fetching trailer for AniList ID:", anilistId);
+
+    try {
+      const trailer = await fetchAniListTrailer(anilistId);
+      if (!trailer) {
+        return res.status(404).json({ error: "No trailer found" });
+      }
+
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.json(trailer);
+    } catch (error: any) {
+      console.error("[Trailer] Error:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   // CORS proxy - forwards any URL
   app.get("/api/proxy", async (req, res) => {

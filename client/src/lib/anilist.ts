@@ -3,7 +3,7 @@
  * GraphQL: https://graphql.anilist.co
  */
 
-const ANILIST_API = 'https://graphql.anilist.co';
+const ANILIST_API = '/api/anilist';
 const API_TIMEOUT = 15000;
 
 export interface AniListMedia {
@@ -17,6 +17,7 @@ export interface AniListMedia {
   coverImage?: {
     large?: string;
     medium?: string;
+    extraLarge?: string;
   };
   bannerImage?: string;
   averageScore?: number;
@@ -31,17 +32,20 @@ export interface AniListMedia {
     episode: number;
     airingAt: number;
   };
+  trailer?: {
+    id: string;
+    site: string;
+    thumbnail?: string;
+  };
 }
 
-export interface AniListPageResponse {
-  data?: {
-    Page?: {
-      pageInfo?: {
-        total?: number;
-        hasNextPage?: boolean;
-      };
-      media?: AniListMedia[];
+interface AniListGraphQLResponse {
+  Page?: {
+    pageInfo?: {
+      total?: number;
+      hasNextPage?: boolean;
     };
+    media?: AniListMedia[];
   };
 }
 
@@ -125,6 +129,11 @@ const MEDIA_DETAIL_QUERY = `
       seasonYear
       genres
       nextAiringEpisode { episode airingAt }
+      trailer {
+        id
+        site
+        thumbnail
+      }
     }
   }
 `;
@@ -198,6 +207,51 @@ const UPCOMING_QUERY = `
   }
 `;
 
+const GENRE_QUERY = `
+  query ($genre: String, $page: Int, $perPage: Int) {
+    Page(page: $page, perPage: $perPage) {
+      media(type: ANIME, genre: $genre, sort: POPULARITY_DESC) {
+        id
+        title { romaji english native }
+        coverImage { large }
+        averageScore
+        episodes
+        status
+        format
+        season
+        seasonYear
+        genres
+      }
+    }
+  }
+`;
+
+const HERO_QUERY = `
+  query ($page: Int, $perPage: Int) {
+    Page(page: $page, perPage: $perPage) {
+      media(type: ANIME, sort: TRENDING_DESC, status: RELEASING) {
+        id
+        title { romaji english native }
+        description(asHtml: false)
+        coverImage { large extraLarge }
+        bannerImage
+        averageScore
+        episodes
+        status
+        format
+        season
+        seasonYear
+        genres
+        trailer {
+          id
+          site
+          thumbnail
+        }
+      }
+    }
+  }
+`;
+
 // ============================================================================
 // EXPORTS
 // ============================================================================
@@ -214,7 +268,7 @@ export async function searchAniList(
   page: number = 1,
   perPage: number = 20
 ): Promise<AniListMedia[]> {
-  const data = await query<AniListPageResponse>(SEARCH_QUERY, {
+  const data = await query<AniListGraphQLResponse>(SEARCH_QUERY, {
     search,
     page,
     perPage,
@@ -234,12 +288,12 @@ export async function getMediaById(id: number): Promise<AniListMedia | null> {
 }
 
 export async function getTrendingAnime(page: number = 1, perPage: number = 10): Promise<AniListMedia[]> {
-  const data = await query<AniListPageResponse>(TRENDING_QUERY, { page, perPage });
+  const data = await query<AniListGraphQLResponse>(TRENDING_QUERY, { page, perPage });
   return data?.Page?.media || [];
 }
 
 export async function getPopularAnime(page: number = 1, perPage: number = 10): Promise<AniListMedia[]> {
-  const data = await query<AniListPageResponse>(POPULAR_QUERY, { page, perPage });
+  const data = await query<AniListGraphQLResponse>(POPULAR_QUERY, { page, perPage });
   return data?.Page?.media || [];
 }
 
@@ -249,13 +303,33 @@ export async function getSeasonalAnime(
   page: number = 1,
   perPage: number = 10
 ): Promise<AniListMedia[]> {
-  const data = await query<AniListPageResponse>(SEASONAL_QUERY, { season, year, page, perPage });
+  const data = await query<AniListGraphQLResponse>(SEASONAL_QUERY, { season, year, page, perPage });
   return data?.Page?.media || [];
 }
 
 export async function getUpcomingAnime(page: number = 1, perPage: number = 10): Promise<AniListMedia[]> {
-  const data = await query<AniListPageResponse>(UPCOMING_QUERY, { page, perPage });
+  const data = await query<AniListGraphQLResponse>(UPCOMING_QUERY, { page, perPage });
   return data?.Page?.media || [];
+}
+
+export async function getAnimeByGenre(genre: string, page: number = 1, perPage: number = 10): Promise<AniListMedia[]> {
+  const data = await query<AniListGraphQLResponse>(GENRE_QUERY, { genre, page, perPage });
+  return data?.Page?.media || [];
+}
+
+export async function getHeroAnimes(limit: number = 5): Promise<AniListMedia[]> {
+  const data = await query<AniListGraphQLResponse>(HERO_QUERY, { page: 1, perPage: 20 });
+  const media = data?.Page?.media || [];
+
+  // Filter: only animes with trailer and banner, prioritize by score + trending
+  const withTrailer = media.filter(
+    (m: AniListMedia) => m.trailer?.site === 'youtube' && m.bannerImage
+  );
+
+  // Sort: higher score first, then by trending (order from API)
+  withTrailer.sort((a: AniListMedia, b: AniListMedia) => (b.averageScore || 0) - (a.averageScore || 0));
+
+  return withTrailer.slice(0, limit);
 }
 
 /**
@@ -272,4 +346,18 @@ export function anilistToAnimeResult(media: AniListMedia) {
     year: media.seasonYear,
     season: media.season,
   };
+}
+
+/**
+ * Filtra duplicatas de seasons do AniList.
+ * Remove qualquer entrada que tenha "Season", "2nd", "3rd" etc no título.
+ */
+export function filterSeasonDuplicates(media: AniListMedia[]): AniListMedia[] {
+  const seasonPattern = /Season|2nd|3rd|4th|5th|6th|7th|Part\s*\d+|Cour\s*\d+/i;
+
+  return media.filter((item) => {
+    const titleRomaji = item.title?.romaji || '';
+    const titleEnglish = item.title?.english || '';
+    return !seasonPattern.test(titleRomaji) && !seasonPattern.test(titleEnglish);
+  });
 }

@@ -1,8 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useLocation } from 'wouter';
-import { useTrendingAnime, usePopularAnime, useSeasonalAnime } from '@/hooks/useAnime';
+import {
+  useHeroAnimes,
+  useTrendingAnime,
+  usePopularAnime,
+  useSeasonalAnime,
+  useAnimeByGenre,
+} from '@/hooks/useAnime';
 import { anilistToAnimeResult } from '@/lib/anilist';
-import { Loader2, Play, Star, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { findAnimeSlug, getAnimeDetails } from '@/providers';
+import { Loader2, Play, Star, ChevronLeft, ChevronRight, Film, X } from 'lucide-react';
 
 function getCurrentSeason() {
   const month = new Date().getMonth();
@@ -16,260 +23,585 @@ function getCurrentYear() {
   return new Date().getFullYear();
 }
 
+const seasonLabels: Record<string, string> = {
+  WINTER: 'Inverno',
+  SPRING: 'Primavera',
+  SUMMER: 'Verão',
+  FALL: 'Outono',
+};
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const [heroIndex, setHeroIndex] = useState(0);
+  const [trailerAnime, setTrailerAnime] = useState<any>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [ptBrDescriptions, setPtBrDescriptions] = useState<Record<number, string>>({});
+  const [watchHistory, setWatchHistory] = useState<any[]>([]);
 
-  const { animes: trending, loading: loadingTrending } = useTrendingAnime(10);
-  const { animes: popular, loading: loadingPopular } = usePopularAnime(20);
-  const { animes: seasonal, loading: loadingSeasonal } = useSeasonalAnime(
+  const { animes: heroAnimes, loading: loadingHero } = useHeroAnimes(5);
+  const { animes: trending } = useTrendingAnime(20);
+  const { animes: popular } = usePopularAnime(20);
+  const { animes: seasonal } = useSeasonalAnime(
     getCurrentSeason(),
     getCurrentYear(),
-    10
+    20
   );
+  const { animes: romance } = useAnimeByGenre('Romance', 30);
+  const { animes: comedy } = useAnimeByGenre('Comedy', 30);
+  const { animes: sliceOfLife } = useAnimeByGenre('Slice of Life', 30);
 
-  const loading = loadingTrending || loadingPopular || loadingSeasonal;
+  // Deduplicate only genre sections against each other
+  const usedGenreIds = new Set<string>();
+
+  const filterGenre = (animes: any[]) => {
+    return animes.filter((a) => {
+      const id = String(a.id);
+      if (usedGenreIds.has(id)) return false;
+      usedGenreIds.add(id);
+      return true;
+    });
+  };
+
+  const dedupRomance = filterGenre(romance);
+  const dedupComedy = filterGenre(comedy);
+  const dedupSliceOfLife = filterGenre(sliceOfLife);
+
+  const loading = loadingHero;
 
   // Auto-rotate hero
   useEffect(() => {
-    if (trending.length === 0) return;
+    if (heroAnimes.length === 0) return;
     const interval = setInterval(() => {
-      setHeroIndex((prev) => (prev + 1) % trending.length);
-    }, 5000);
+      setHeroIndex((prev) => (prev + 1) % heroAnimes.length);
+    }, 6000);
     return () => clearInterval(interval);
-  }, [trending.length]);
+  }, [heroAnimes.length]);
 
-  const heroAnime = trending[heroIndex];
+  // Fetch PT-BR descriptions from AnimeFire
+  useEffect(() => {
+    if (heroAnimes.length === 0) return;
+
+    const fetchPtBr = async () => {
+      for (const anime of heroAnimes) {
+        if (ptBrDescriptions[anime.id]) continue;
+
+        try {
+          const slug = await findAnimeSlug(
+            anime.title?.romaji || '',
+            anime.title?.english
+          );
+          if (slug) {
+            const details = await getAnimeDetails(slug);
+            if (details?.description) {
+              setPtBrDescriptions((prev) => ({
+                ...prev,
+                [anime.id]: details.description!,
+              }));
+            }
+          }
+        } catch {}
+      }
+    };
+
+    fetchPtBr();
+  }, [heroAnimes]);
+
+  const heroAnime = heroAnimes[heroIndex];
+
+  // Load watch history from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('hiraku_watch_history');
+      if (stored) {
+        setWatchHistory(JSON.parse(stored));
+      }
+    } catch {}
+  }, []);
+
+  const hasWatchHistory = watchHistory.length > 0;
+
+  const toggleFavorite = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const openTrailer = useCallback((anime: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (anime.trailer?.site === 'youtube') {
+      setTrailerAnime(anime);
+    }
+  }, []);
+
+  const closeTrailer = useCallback(() => {
+    setTrailerAnime(null);
+  }, []);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="animate-spin text-accent" size={40} />
+      <div className="flex items-center justify-center h-screen bg-black">
+        <Loader2 className="animate-spin text-purple-500" size={40} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
+    <div className="min-h-screen bg-black">
+      {/* Hero Slider */}
       {heroAnime && (
-        <div className="relative h-[500px] overflow-hidden">
-          {/* Background Image */}
-          {heroAnime.bannerImage ? (
-            <img
-              src={heroAnime.bannerImage}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          ) : heroAnime.coverImage?.large ? (
-            <img
-              src={heroAnime.coverImage.large}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover opacity-30"
-            />
-          ) : null}
-          
-          {/* Gradients */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/80 to-transparent" />
+        <div className="relative h-[70vh] min-h-[500px] overflow-hidden">
+          {/* Background - Banner */}
+          {heroAnimes.map((anime, idx) => (
+            <div
+              key={anime.id}
+              className={`absolute inset-0 transition-opacity duration-[1500ms] ease-in-out ${
+                idx === heroIndex ? 'opacity-100 z-[1]' : 'opacity-0 z-0'
+              }`}
+            >
+              {anime.bannerImage ? (
+                <img
+                  src={anime.bannerImage}
+                  alt=""
+                  className={`w-full h-full object-cover transition-transform duration-[8000ms] ease-out ${
+                    idx === heroIndex ? 'scale-105' : 'scale-100'
+                  }`}
+                />
+              ) : anime.coverImage?.extraLarge ? (
+                <img
+                  src={anime.coverImage.extraLarge}
+                  alt=""
+                  className={`w-full h-full object-cover opacity-30 transition-transform duration-[8000ms] ease-out ${
+                    idx === heroIndex ? 'scale-105' : 'scale-100'
+                  }`}
+                />
+              ) : null}
+            </div>
+          ))}
 
-          {/* Content */}
-          <div className="relative z-10 h-full flex items-end p-8 pb-12">
-            <div className="max-w-3xl">
-              <h1 className="text-4xl md:text-5xl font-bold mb-3 text-white">
-                {heroAnime.title?.english || heroAnime.title?.romaji}
-              </h1>
-              
-              {heroAnime.description && (
-                <p className="text-muted-foreground line-clamp-3 mb-4 max-w-2xl">
-                  {heroAnime.description.replace(/<[^>]*>/g, '')}
+          {/* Overlays */}
+          <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black via-black/60 to-transparent" />
+          <div className="absolute inset-0 z-[2] bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
+          <div className="absolute inset-0 z-[2] bg-black/50" />
+
+          {/* Content - Left Side */}
+          <div className="relative z-10 h-full flex items-center px-8 md:px-16">
+            <div className="max-w-xl" key={heroAnime.id}>
+              {/* Cover Image + Title */}
+              <div className="flex items-end gap-5 mb-5 animate-[fadeSlideUp_0.8s_ease-out]">
+                {heroAnime.coverImage?.large && (
+                  <img
+                    src={heroAnime.coverImage.large}
+                    alt=""
+                    className="w-24 h-36 object-cover rounded-xl shadow-2xl border border-white/10 flex-shrink-0 animate-[fadeIn_0.6s_ease-out_0.2s_both]"
+                  />
+                )}
+                <div className="min-w-0 animate-[fadeSlideUp_0.7s_ease-out_0.1s_both]">
+                  <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg leading-tight">
+                    {heroAnime.title?.english || heroAnime.title?.romaji}
+                  </h1>
+                  {heroAnime.title?.romaji && heroAnime.title?.english && (
+                    <p className="text-gray-400 text-xs mt-1">{heroAnime.title.romaji}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Synopsis */}
+              {(ptBrDescriptions[heroAnime.id] || heroAnime.description) && (
+                <p className="text-gray-300 line-clamp-3 mb-5 text-sm leading-relaxed animate-[fadeSlideUp_0.7s_ease-out_0.2s_both]">
+                  {(ptBrDescriptions[heroAnime.id] || heroAnime.description || '')
+                    .replace(/<[^>]*>/g, '')
+                    .substring(0, 180)}
+                  {(ptBrDescriptions[heroAnime.id] || heroAnime.description || '').length > 180 ? '...' : ''}
                 </p>
               )}
 
-              <div className="flex items-center gap-3 mb-6">
-                {heroAnime.averageScore && (
-                  <div className="flex items-center gap-1 bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm">
-                    <Star size={14} className="fill-current" />
-                    <span>{(heroAnime.averageScore / 10).toFixed(1)}</span>
-                  </div>
-                )}
+              {/* Meta badges */}
+              <div className="flex items-center gap-2 mb-5 animate-[fadeSlideUp_0.7s_ease-out_0.3s_both]">
                 {heroAnime.format && (
-                  <span className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-sm">
+                  <span className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-lg text-white text-xs font-medium">
                     {heroAnime.format}
                   </span>
                 )}
+                {heroAnime.averageScore && (
+                  <span className="px-3 py-1 bg-yellow-500/20 backdrop-blur-sm rounded-lg text-yellow-300 text-xs font-medium flex items-center gap-1">
+                    <Star size={10} className="fill-current" />
+                    {(heroAnime.averageScore / 10).toFixed(1)}
+                  </span>
+                )}
                 {heroAnime.episodes && (
-                  <span className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-sm">
+                  <span className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-lg text-white text-xs">
                     {heroAnime.episodes} eps
                   </span>
                 )}
-                {heroAnime.season && heroAnime.seasonYear && (
-                  <span className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-sm">
-                    {heroAnime.season} {heroAnime.seasonYear}
+                {heroAnime.genres && heroAnime.genres.slice(0, 2).map((g) => (
+                  <span key={g} className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-lg text-white text-xs">
+                    {g}
                   </span>
-                )}
+                ))}
               </div>
 
-              <div className="flex gap-3">
+              {/* Buttons */}
+              <div className="flex items-center gap-3 animate-[fadeSlideUp_0.7s_ease-out_0.4s_both]">
                 <button
                   onClick={() => setLocation(`/anime/${heroAnime.id}`)}
-                  className="flex items-center gap-2 bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-105 active:scale-95"
                 >
-                  <Play size={18} className="fill-current" />
-                  Assistir Agora
+                  <Play size={16} className="fill-current" />
+                  Assistir
                 </button>
+
                 <button
-                  onClick={() => setLocation(`/anime/${heroAnime.id}`)}
-                  className="flex items-center gap-2 bg-muted/50 hover:bg-muted text-foreground px-6 py-3 rounded-lg font-semibold transition-colors"
+                  onClick={(e) => toggleFavorite(String(heroAnime.id), e)}
+                  className={`p-2.5 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 ${
+                    favorites.has(String(heroAnime.id))
+                      ? 'bg-yellow-500/20 text-yellow-400'
+                      : 'text-gray-400 hover:bg-yellow-500/20 hover:text-yellow-400'
+                  }`}
                 >
-                  Mais Informações
+                  <Star size={18} className={favorites.has(String(heroAnime.id)) ? 'fill-current' : ''} />
                 </button>
+
+                {heroAnime.trailer?.site === 'youtube' && (
+                  <button
+                    onClick={(e) => openTrailer(heroAnime, e)}
+                    className="p-2.5 rounded-xl text-gray-400 hover:bg-purple-500/20 hover:text-white transition-all duration-300 hover:scale-110 active:scale-95"
+                  >
+                    <Film size={18} />
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Hero Indicators */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            {trending.slice(0, 10).map((_, idx) => (
+          {/* Indicators */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2.5">
+            {heroAnimes.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setHeroIndex(idx)}
-                className={`h-1.5 rounded-full transition-all ${
-                  idx === heroIndex ? 'w-8 bg-accent' : 'w-2 bg-muted/50 hover:bg-muted'
+                className={`rounded-full transition-all duration-500 ease-out ${
+                  idx === heroIndex
+                    ? 'w-10 h-2 bg-purple-500 shadow-lg shadow-purple-500/50'
+                    : 'w-2 h-2 bg-white/30 hover:bg-white/50 hover:scale-125'
                 }`}
               />
             ))}
           </div>
+
+          {/* Navigation arrows */}
+          <button
+            onClick={() => setHeroIndex((prev) => (prev - 1 + heroAnimes.length) % heroAnimes.length)}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-all opacity-0 hover:opacity-100 group-hover:opacity-100"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          <button
+            onClick={() => setHeroIndex((prev) => (prev + 1) % heroAnimes.length)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-all opacity-0 hover:opacity-100 group-hover:opacity-100"
+          >
+            <ChevronRight size={24} />
+          </button>
         </div>
       )}
 
-      {/* Anime Sections */}
-      <div className="px-6 py-8 space-y-12">
-        {/* Trending */}
+      {/* Trailer Mini Player */}
+      {trailerAnime && trailerAnime.trailer?.site === 'youtube' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={closeTrailer}>
+          <div className="relative w-full max-w-4xl mx-4" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={closeTrailer}
+              className="absolute -top-12 right-0 p-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <X size={24} />
+            </button>
+            <div className="aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/10">
+              <iframe
+                src={`https://www.youtube.com/embed/${trailerAnime.trailer.id}?autoplay=1&rel=0`}
+                title={`Trailer - ${trailerAnime.title?.english || trailerAnime.title?.romaji}`}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Content Sections */}
+      <div className="py-10 space-y-10">
+
+        {/* 1. Continuar Assistindo (só aparece se tiver histórico) */}
+        {hasWatchHistory && (
+          <section className="px-8 md:px-16">
+            <h2 className="text-2xl font-bold text-white mb-4">Continuar Assistindo</h2>
+            <HorizontalScroll>
+              {watchHistory.map((item: any) => (
+                <AnimeCard
+                  key={item.anilistId}
+                  result={{
+                    id: String(item.anilistId),
+                    title: item.title || '',
+                    titleAlternative: undefined,
+                    thumbnail: item.thumbnail || '',
+                    score: 0,
+                    type: 'TV',
+                    year: undefined,
+                    season: undefined,
+                  }}
+                  isFavorite={false}
+                  onToggleFavorite={() => {}}
+                  onClick={() => setLocation(`/anime/${item.anilistId}`)}
+                />
+              ))}
+            </HorizontalScroll>
+          </section>
+        )}
+
+        {/* 2. Mais Curtidos */}
         <section>
-          <SectionHeader
-            title="Em Alta"
-            onSeeAll={() => setLocation('/search?sort=TRENDING_DESC')}
-          />
-          <AnimeRow animes={trending} onAnimeClick={(id) => setLocation(`/anime/${id}`)} />
+          <h2 className="text-2xl font-bold text-white mb-4 px-8 md:px-16">Mais Curtidos</h2>
+          <HorizontalScroll>
+            {popular.map((anime) => {
+              const result = anilistToAnimeResult(anime);
+              return (
+                <AnimeCard
+                  key={result.id}
+                  result={result}
+                  isFavorite={favorites.has(result.id)}
+                  onToggleFavorite={toggleFavorite}
+                  onClick={() => setLocation(`/anime/${result.id}`)}
+                />
+              );
+            })}
+          </HorizontalScroll>
         </section>
 
-        {/* Popular */}
+        {/* 3. Melhores Lançamentos */}
         <section>
-          <SectionHeader
-            title="Populares"
-            onSeeAll={() => setLocation('/search?sort=POPULARITY_DESC')}
-          />
-          <AnimeRow animes={popular} onAnimeClick={(id) => setLocation(`/anime/${id}`)} />
+          <h2 className="text-2xl font-bold text-white mb-4 px-8 md:px-16">Melhores Lançamentos</h2>
+          <HorizontalScroll>
+            {seasonal.map((anime) => {
+              const result = anilistToAnimeResult(anime);
+              return (
+                <AnimeCard
+                  key={result.id}
+                  result={result}
+                  isFavorite={favorites.has(result.id)}
+                  onToggleFavorite={toggleFavorite}
+                  onClick={() => setLocation(`/anime/${result.id}`)}
+                />
+              );
+            })}
+          </HorizontalScroll>
         </section>
 
-        {/* Seasonal */}
+        {/* 4. Top 10 */}
         <section>
-          <SectionHeader
-            title={`${getCurrentSeason()} ${getCurrentYear()}`}
-            onSeeAll={() => setLocation(`/search?season=${getCurrentSeason()}&year=${getCurrentYear()}`)}
-          />
-          <AnimeRow animes={seasonal} onAnimeClick={(id) => setLocation(`/anime/${id}`)} />
+          <h2 className="text-2xl font-bold text-white mb-4 px-8 md:px-16">Top 10</h2>
+          <HorizontalScroll>
+            {[...heroAnimes, ...popular].slice(0, 10).map((anime, index) => {
+              const result = anilistToAnimeResult(anime);
+              return (
+                <div
+                  key={result.id}
+                  onClick={() => setLocation(`/anime/${result.id}`)}
+                  className="flex-shrink-0 flex items-center cursor-pointer group/card mx-4 transition-all duration-300 hover:scale-105 hover:z-10"
+                >
+                  {/* Rank Number - Netflix style outline */}
+                  <span
+                    className="text-[200px] font-black select-none leading-none"
+                    style={{
+                      WebkitTextStroke: '4px rgba(124, 58, 237, 0.5)',
+                      color: 'transparent',
+                    }}
+                  >
+                    {index + 1}
+                  </span>
+
+                  {/* Anime Cover - overlaps number */}
+                  <div className="relative w-32 h-48 rounded-lg overflow-hidden bg-gray-900 border border-white/10 group-hover/card:border-purple-500/50 transition-all duration-300 -ml-8 z-[1] shadow-2xl group-hover/card:shadow-[0_0_30px_rgba(124,58,237,0.4)]">
+                    {/* Gradient glow towards number */}
+                    <div className="absolute inset-y-0 -left-6 w-6 bg-gradient-to-r from-black/50 to-transparent z-[2]" />
+                    {result.thumbnail ? (
+                      <img
+                        src={result.thumbnail}
+                        alt={result.title}
+                        className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                        <span className="text-gray-500 text-xs">Sem imagem</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </HorizontalScroll>
+        </section>
+
+        {/* 5. Romances */}
+        <section>
+          <h2 className="text-2xl font-bold text-white mb-4 px-8 md:px-16">Romances</h2>
+          <HorizontalScroll>
+            {dedupRomance.map((anime) => {
+              const result = anilistToAnimeResult(anime);
+              return (
+                <AnimeCard
+                  key={result.id}
+                  result={result}
+                  isFavorite={favorites.has(result.id)}
+                  onToggleFavorite={toggleFavorite}
+                  onClick={() => setLocation(`/anime/${result.id}`)}
+                />
+              );
+            })}
+          </HorizontalScroll>
+        </section>
+
+        {/* 6. Comédia */}
+        <section>
+          <h2 className="text-2xl font-bold text-white mb-4 px-8 md:px-16">Comédia</h2>
+          <HorizontalScroll>
+            {dedupComedy.map((anime) => {
+              const result = anilistToAnimeResult(anime);
+              return (
+                <AnimeCard
+                  key={result.id}
+                  result={result}
+                  isFavorite={favorites.has(result.id)}
+                  onToggleFavorite={toggleFavorite}
+                  onClick={() => setLocation(`/anime/${result.id}`)}
+                />
+              );
+            })}
+          </HorizontalScroll>
+        </section>
+
+        {/* 7. Slice of Life */}
+        <section>
+          <h2 className="text-2xl font-bold text-white mb-4 px-8 md:px-16">Slice of Life</h2>
+          <HorizontalScroll>
+            {dedupSliceOfLife.map((anime) => {
+              const result = anilistToAnimeResult(anime);
+              return (
+                <AnimeCard
+                  key={result.id}
+                  result={result}
+                  isFavorite={favorites.has(result.id)}
+                  onToggleFavorite={toggleFavorite}
+                  onClick={() => setLocation(`/anime/${result.id}`)}
+                />
+              );
+            })}
+          </HorizontalScroll>
         </section>
       </div>
     </div>
   );
 }
 
-function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll: () => void }) {
-  return (
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-2xl font-bold flex items-center gap-2">
-        <div className="w-1 h-6 bg-accent rounded" />
-        {title}
-      </h2>
-      <button
-        onClick={onSeeAll}
-        className="text-accent hover:text-accent/80 text-sm font-medium"
-      >
-        Ver Todos →
-      </button>
-    </div>
-  );
-}
+// ============================================================================
+// COMPONENTS
+// ============================================================================
 
-function AnimeRow({
-  animes,
-  onAnimeClick,
-}: {
-  animes: any[];
-  onAnimeClick: (id: string) => void;
-}) {
-  const scrollRef = useState<React.RefObject<HTMLDivElement | null>>(() => ({ current: null }))[0];
+function HorizontalScroll({ children }: { children: React.ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return;
-    const amount = 300;
-    scrollRef.current.scrollBy({
-      left: direction === 'left' ? -amount : amount,
-      behavior: 'smooth',
-    });
+    const el = scrollRef.current;
+    const amount = 400;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+
+    if (direction === 'right' && el.scrollLeft + amount >= maxScroll - 10) {
+      // Reached near the end, scroll back to start
+      el.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      el.scrollBy({
+        left: direction === 'left' ? -amount : amount,
+        behavior: 'smooth',
+      });
+    }
   };
 
   return (
-    <div className="relative group">
+    <div className="relative group/scroll">
       <button
         onClick={() => scroll('left')}
-        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/70 hover:bg-black/90 p-2 rounded-full text-white opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300"
       >
         <ChevronLeft size={20} />
       </button>
 
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scrollbar-hide pb-4"
+        className="flex gap-3 overflow-x-auto scrollbar-hide px-8 md:px-16 pb-2 pt-4"
       >
-        {animes.map((anime) => {
-          const result = anilistToAnimeResult(anime);
-          return (
-            <div
-              key={result.id}
-              onClick={() => onAnimeClick(result.id)}
-              className="flex-shrink-0 w-40 cursor-pointer group/card"
-            >
-              <div className="relative aspect-[9/13] rounded-lg overflow-hidden mb-2">
-                {result.thumbnail ? (
-                  <img
-                    src={result.thumbnail}
-                    alt={result.title}
-                    className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-muted flex items-center justify-center">
-                    <span className="text-muted-foreground text-sm">Sem imagem</span>
-                  </div>
-                )}
-                
-                {result.score > 0 && (
-                  <div className="absolute top-2 right-2 bg-accent/90 backdrop-blur-sm rounded px-2 py-1 flex items-center gap-1">
-                    <Star size={10} className="fill-white text-white" />
-                    <span className="text-xs font-bold text-white">{result.score}</span>
-                  </div>
-                )}
-              </div>
-
-              <h3 className="text-sm font-medium line-clamp-2 group-hover/card:text-accent transition-colors">
-                {result.title}
-              </h3>
-              {result.type && (
-                <span className="text-xs text-muted-foreground">{result.type}</span>
-              )}
-            </div>
-          );
-        })}
+        {children}
       </div>
 
       <button
         onClick={() => scroll('right')}
-        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/80 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/70 hover:bg-black/90 p-2 rounded-full text-white opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300"
       >
         <ChevronRight size={20} />
       </button>
     </div>
   );
 }
+
+function AnimeCard({
+  result,
+  isFavorite,
+  onToggleFavorite,
+  onClick,
+}: {
+  result: ReturnType<typeof anilistToAnimeResult>;
+  isFavorite: boolean;
+  onToggleFavorite: (id: string, e: React.MouseEvent) => void;
+  onClick: () => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className="flex-shrink-0 w-44 cursor-pointer group/card transition-all duration-300 hover:scale-105 hover:z-10"
+    >
+      <div className="relative aspect-[9/13] rounded-xl overflow-hidden mb-2 bg-gray-900 border border-white/10 group-hover/card:border-purple-500/50 transition-all duration-300 group-hover/card:shadow-[0_0_30px_rgba(124,58,237,0.4)]">
+        {result.thumbnail ? (
+          <img
+            src={result.thumbnail}
+            alt={result.title}
+            className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-800">
+            <span className="text-gray-500 text-xs">Sem imagem</span>
+          </div>
+        )}
+
+        {/* Favorite button */}
+        <button
+          onClick={(e) => onToggleFavorite(result.id, e)}
+          className={`absolute top-2 right-2 p-1.5 rounded-lg transition-all duration-200 ${
+            isFavorite
+              ? 'bg-yellow-500/90 text-white'
+              : 'bg-black/50 text-gray-400 opacity-0 group-hover/card:opacity-100'
+          }`}
+        >
+          <Star size={12} className={isFavorite ? 'fill-current' : ''} />
+        </button>
+      </div>
+
+      <h3 className="text-sm font-medium text-gray-300 line-clamp-2 group-hover/card:text-purple-400 transition-colors leading-tight">
+        {result.title}
+      </h3>
+    </div>
+  );
+}
+
+
