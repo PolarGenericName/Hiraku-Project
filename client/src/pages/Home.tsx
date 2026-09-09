@@ -192,88 +192,54 @@ export default function Home() {
 
           {/* Content - Left Side */}
           <div className="relative z-10 h-full flex items-center px-8 md:px-16">
-            <div className="max-w-xl" key={heroAnime.id}>
-              {/* Cover Image + Title */}
-              <div className="flex items-end gap-5 mb-5 animate-[fadeSlideUp_0.8s_ease-out]">
-                {heroAnime.coverImage?.large && (
-                  <img
-                    src={heroAnime.coverImage.large}
-                    alt=""
-                    className="w-24 h-36 object-cover rounded-xl shadow-2xl flex-shrink-0 animate-[fadeIn_0.6s_ease-out_0.2s_both]"
-                  />
+            <div className="max-w-2xl" key={heroAnime.id}>
+              {/* Title */}
+              <div className="mb-6 animate-[fadeSlideUp_0.7s_ease-out_0.1s_both]">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-lg leading-tight">
+                  {heroAnime.title?.english || heroAnime.title?.romaji}
+                </h1>
+                {heroAnime.title?.romaji && heroAnime.title?.english && (
+                  <p className="text-gray-400 text-sm mt-2">{heroAnime.title.romaji}</p>
                 )}
-                <div className="min-w-0 animate-[fadeSlideUp_0.7s_ease-out_0.1s_both]">
-                  <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg leading-tight">
-                    {heroAnime.title?.english || heroAnime.title?.romaji}
-                  </h1>
-                  {heroAnime.title?.romaji && heroAnime.title?.english && (
-                    <p className="text-gray-400 text-xs mt-1">{heroAnime.title.romaji}</p>
-                  )}
-                </div>
               </div>
 
               {/* Synopsis */}
               {(ptBrDescriptions[heroAnime.id] || heroAnime.description) && (
-                <p className="text-gray-300 line-clamp-3 mb-5 text-sm leading-relaxed animate-[fadeSlideUp_0.7s_ease-out_0.2s_both]">
+                <p className="text-gray-300 line-clamp-4 mb-6 text-base leading-relaxed animate-[fadeSlideUp_0.7s_ease-out_0.2s_both]">
                   {(ptBrDescriptions[heroAnime.id] || heroAnime.description || '')
                     .replace(/<[^>]*>/g, '')
-                    .substring(0, 180)}
-                  {(ptBrDescriptions[heroAnime.id] || heroAnime.description || '').length > 180 ? '...' : ''}
+                    .substring(0, 250)}
+                  {(ptBrDescriptions[heroAnime.id] || heroAnime.description || '').length > 250 ? '...' : ''}
                 </p>
               )}
 
-              {/* Meta badges */}
-              <div className="flex items-center gap-2 mb-5 animate-[fadeSlideUp_0.7s_ease-out_0.3s_both]">
-                {heroAnime.format && (
-                  <span className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-lg text-white text-xs font-medium">
-                    {heroAnime.format}
-                  </span>
-                )}
-                {heroAnime.averageScore && (
-                  <span className="px-3 py-1 bg-yellow-500/20 backdrop-blur-sm rounded-lg text-yellow-300 text-xs font-medium flex items-center gap-1">
-                    <Star size={10} className="fill-current" />
-                    {(heroAnime.averageScore / 10).toFixed(1)}
-                  </span>
-                )}
-                {heroAnime.episodes && (
-                  <span className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-lg text-white text-xs">
-                    {heroAnime.episodes} eps
-                  </span>
-                )}
-                {heroAnime.genres && heroAnime.genres.slice(0, 2).map((g) => (
-                  <span key={g} className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-lg text-white text-xs">
-                    {g}
-                  </span>
-                ))}
-              </div>
-
               {/* Buttons */}
-              <div className="flex items-center gap-3 animate-[fadeSlideUp_0.7s_ease-out_0.4s_both]">
+              <div className="flex items-center gap-4 animate-[fadeSlideUp_0.7s_ease-out_0.3s_both]">
                 <button
                   onClick={() => setLocation(`/anime/${heroAnime.id}`)}
-                  className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-105 active:scale-95"
+                  className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-8 py-3.5 rounded-xl font-semibold transition-all duration-300 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-105 active:scale-95 text-lg"
                 >
-                  <Play size={16} className="fill-current" />
+                  <Play size={20} className="fill-current" />
                   Assistir
                 </button>
 
                 <button
                   onClick={(e) => toggleFavorite(String(heroAnime.id), e)}
-                  className={`p-2.5 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 ${
+                  className={`p-3.5 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 ${
                     favorites.has(String(heroAnime.id))
                       ? 'bg-purple-500/20 text-purple-400'
                       : 'text-gray-400 hover:bg-purple-500/20 hover:text-purple-400'
                   }`}
                 >
-                  <Bookmark size={18} className={favorites.has(String(heroAnime.id)) ? 'fill-current' : ''} />
+                  <Bookmark size={22} className={favorites.has(String(heroAnime.id)) ? 'fill-current' : ''} />
                 </button>
 
                 {heroAnime.trailer?.site === 'youtube' && (
                   <button
                     onClick={(e) => openTrailer(heroAnime, e)}
-                    className="p-2.5 rounded-xl text-gray-400 hover:bg-purple-500/20 hover:text-white transition-all duration-300 hover:scale-110 active:scale-95"
+                    className="p-3.5 rounded-xl text-gray-400 hover:bg-purple-500/20 hover:text-white transition-all duration-300 hover:scale-110 active:scale-95"
                   >
-                    <Film size={18} />
+                    <Film size={22} />
                   </button>
                 )}
               </div>
