@@ -357,6 +357,18 @@ export default function VideoPlayer({ stream, animeId, onClose, onNextEpisode }:
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  const handleVideoClick = useCallback(() => {
+    if (showControls) {
+      // If controls are showing, hide them and play/pause
+      setShowControls(false);
+      if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    } else {
+      // If controls are hidden, show them and start hide timer
+      resetHideTimer();
+    }
+    togglePlay();
+  }, [showControls, resetHideTimer, togglePlay]);
+
   return (
     <div
       ref={containerRef}
@@ -366,7 +378,7 @@ export default function VideoPlayer({ stream, animeId, onClose, onNextEpisode }:
       <video
         ref={videoRef}
         className="w-full h-full object-contain"
-        onClick={togglePlay}
+        onClick={handleVideoClick}
         playsInline
       />
 
@@ -531,9 +543,13 @@ export default function VideoPlayer({ stream, animeId, onClose, onNextEpisode }:
             {/* Play/Pause */}
             <button
               onClick={togglePlay}
-              className="p-4 rounded-full bg-accent hover:bg-accent/80 transition-all duration-200 text-white hover:scale-110 shadow-lg shadow-accent/40"
+              className={`p-2 rounded-lg transition-all duration-200 hover:scale-110 ${
+                isPlaying 
+                  ? 'text-white hover:text-purple-400' 
+                  : 'text-purple-500 hover:text-purple-400'
+              }`}
             >
-              {isPlaying ? <Pause size={30} /> : <Play size={30} className="ml-0.5" />}
+              {isPlaying ? <Pause size={28} /> : <Play size={28} className="ml-0.5" />}
             </button>
 
             {/* Skip forward */}

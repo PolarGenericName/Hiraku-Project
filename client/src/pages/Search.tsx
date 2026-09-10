@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates } from '@/lib/anilist';
+import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates, getTrendingAnime, getPopularAnime, getUpcomingAnime, getSeasonalAnime } from '@/lib/anilist';
 import { batchCheckAvailability } from '@/providers';
-import { Loader2, Search as SearchIcon, Bookmark, Star, X, Play, AlertCircle } from 'lucide-react';
+import { Loader2, Search as SearchIcon, Star, X, Play, AlertCircle, SlidersHorizontal, Bookmark } from 'lucide-react';
+import LoadingAnimation from '@/components/LoadingAnimation';
 
 interface SearchFilters {
   season?: string;
@@ -13,11 +14,18 @@ interface SearchFilters {
   availableOnly?: boolean;
 }
 
-const SEASONS = ['WINTER', 'SPRING', 'SUMMER', 'FALL'];
+const SEASONS = ['VERÃO', 'OUTONO', 'INVERNO', 'PRIMAVERA'];
+const SEASON_VALUES = ['SPRING', 'SUMMER', 'FALL', 'WINTER'];
 const YEARS = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i);
-const STATUSES = ['RELEASING', 'FINISHED', 'NOT_YET_RELEASED', 'CANCELLED'];
-const FORMATS = ['TV', 'MOVIE', 'OVA', 'ONA', 'SPECIAL', 'TV_SHORT'];
+const STATUSES = ['LANÇANDO', 'FINALIZADO', 'EM BREVE', 'CANCELADO'];
+const STATUS_VALUES = ['RELEASING', 'FINISHED', 'NOT_YET_RELEASED', 'CANCELLED'];
+const FORMATS = ['TV', 'FILME', 'OVA', 'ONA', 'ESPECIAL', 'TV SHORT'];
+const FORMAT_VALUES = ['TV', 'MOVIE', 'OVA', 'ONA', 'SPECIAL', 'TV_SHORT'];
 const GENRES = [
+  'Ação', 'Aventura', 'Comédia', 'Drama', 'Fantasia', 'Horror',
+  'Mistério', 'Romance', 'Ficção Científica', 'Slice of Life', 'Esportes', 'Sobrenatural', 'Suspense',
+];
+const GENRE_VALUES = [
   'Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Horror',
   'Mystery', 'Romance', 'Sci-Fi', 'Slice of Life', 'Sports', 'Supernatural', 'Thriller',
 ];
@@ -32,20 +40,107 @@ export default function Search() {
   const [availableIds, setAvailableIds] = useState<Set<string>>(new Set());
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
-  // Parse URL params
+  // Favorites from localStorage
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('hiraku-favorites');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+
+  // Default animes (mixed trending + popular)
+  const [defaultAnimes, setDefaultAnimes] = useState<any[]>([]);
+  const [defaultLoading, setDefaultLoading] = useState(true);
+
+  // Save favorites to localStorage
+  useEffect(() => {
+    localStorage.setItem('hiraku-favorites', JSON.stringify([...favorites]));
+  }, [favorites]);
+
+  const toggleFavorite = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Parse URL params and search
   useEffect(() => {
     const params = new URLSearchParams(location.split('?')[1] || '');
     const q = params.get('q');
     const season = params.get('season');
     const year = params.get('year');
-    const sort = params.get('sort');
     const genre = params.get('genre');
 
+    // Update query
     if (q) setQuery(q);
-    if (season) setFilters((f) => ({ ...f, season }));
-    if (year) setFilters((f) => ({ ...f, year: Number(year) }));
-    if (genre) setFilters((f) => ({ ...f, genre }));
+    else if (!q && query) setQuery('');
+
+    // Update filters
+    const newFilters: SearchFilters = {};
+    if (season) {
+      const seasonIndex = SEASONS.indexOf(season);
+      if (seasonIndex >= 0) {
+        newFilters.season = SEASON_VALUES[seasonIndex];
+      } else {
+        newFilters.season = season;
+      }
+    }
+    if (year) newFilters.year = Number(year);
+    if (genre) {
+      // Try to find in Portuguese genres first
+      const genreIndex = GENRES.indexOf(genre);
+      if (genreIndex >= 0) {
+        newFilters.genre = GENRE_VALUES[genreIndex];
+      } else {
+        // Try to find in English genres (from AniList)
+        const genreValueIndex = GENRE_VALUES.indexOf(genre);
+        if (genreValueIndex >= 0) {
+          newFilters.genre = GENRE_VALUES[genreValueIndex];
+        } else {
+          newFilters.genre = genre;
+        }
+      }
+    }
+    setFilters(newFilters);
   }, [location]);
+
+  // Load default animes on mount
+  useEffect(() => {
+    const loadDefault = async () => {
+      try {
+        setDefaultLoading(true);
+        const [trending, popular, upcoming, seasonal] = await Promise.all([
+          getTrendingAnime(1, 25),
+          getPopularAnime(1, 25),
+          getUpcomingAnime(1, 25),
+          getSeasonalAnime('SPRING', new Date().getFullYear(), 1, 25),
+        ]);
+
+        // Combine and deduplicate
+        const combined = [...trending];
+        for (const anime of [...popular, ...upcoming, ...seasonal]) {
+          if (!combined.find((a) => a.id === anime.id)) {
+            combined.push(anime);
+          }
+        }
+
+        // Filter to only ones with cover images and remove season duplicates
+        const withImages = filterSeasonDuplicates(combined).filter((a) => a.coverImage?.large);
+        setDefaultAnimes(withImages);
+      } catch (err) {
+        console.error('Error loading default animes:', err);
+      } finally {
+        setDefaultLoading(false);
+      }
+    };
+
+    loadDefault();
+  }, []);
 
   // Search when query or filters change
   useEffect(() => {
@@ -57,14 +152,15 @@ export default function Search() {
 
       try {
         setLoading(true);
-        const data = await searchAniList(query || '', filters);
-        setResults(filterSeasonDuplicates(data));
+        const data = await searchAniList(query.trim() || undefined, filters);
+        const filtered = filterSeasonDuplicates(data);
+        setResults(filtered);
 
         // Check availability on AnimeFire
-        if (data.length > 0) {
+        if (filtered.length > 0) {
           setCheckingAvailability(true);
           try {
-            const animesToCheck = data.map((anime: any) => ({
+            const animesToCheck = filtered.map((anime: any) => ({
               id: anime.id.toString(),
               title: anime.title?.romaji || anime.title?.english || '',
               titleAlternative: anime.title?.english,
@@ -74,6 +170,14 @@ export default function Search() {
             }));
             const available = await batchCheckAvailability(animesToCheck);
             setAvailableIds(available);
+
+            // Filter to only show available anime
+            if (available.size > 0) {
+              const availableAnime = filtered.filter((anime: any) => 
+                available.has(anime.id.toString())
+              );
+              setResults(availableAnime);
+            }
           } catch (err) {
             console.error('Availability check error:', err);
           } finally {
@@ -99,6 +203,10 @@ export default function Search() {
     setFilters((prev) => ({ ...prev, [key]: value || undefined }));
   };
 
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+  };
+
   const clearFilters = () => {
     setFilters({});
     setAvailableIds(new Set());
@@ -106,116 +214,128 @@ export default function Search() {
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
 
+  const displayAnimes = results.length > 0 ? results : defaultAnimes;
+
   return (
     <div className="min-h-screen bg-black">
-      {/* Header */}
-      <div className="bg-gradient-to-b from-purple-500/10 to-black border-b border-white/5 p-8">
-        <h1 className="text-3xl font-bold mb-6 text-white">Buscar Animes</h1>
+      {/* Header - Centered */}
+      <div className="pt-12 pb-8 px-8 md:px-16 relative">
+        <h1 className="text-3xl font-bold mb-8 text-white text-center">Buscar Animes</h1>
 
-        <form onSubmit={handleSearch} className="max-w-2xl">
-          <div className="relative">
-            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Buscar anime..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 text-white placeholder-gray-500 transition-all"
-            />
-            {query && (
+        {/* Search Box with Filter Button */}
+        <div className="max-w-3xl mx-auto">
+          <form onSubmit={handleSearch} className="relative">
+            <div className="flex items-center gap-3">
+              {/* Search Input - Glass Effect */}
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Buscar anime..."
+                  value={query}
+                  onChange={(e) => handleQueryChange(e.target.value)}
+                  className="w-full pl-12 pr-10 py-3.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-white placeholder-gray-500 transition-all"
+                />
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => handleQueryChange('')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Button */}
               <button
                 type="button"
-                onClick={() => setQuery('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`p-3.5 rounded-xl backdrop-blur-md border border-white/10 transition-all ${
+                  showFilters || hasActiveFilters
+                    ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                    : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
               >
-                <X size={18} />
+                <SlidersHorizontal size={20} />
+                {hasActiveFilters && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-purple-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+                    {Object.values(filters).filter(Boolean).length}
+                  </span>
+                )}
               </button>
-            )}
-          </div>
-        </form>
-
-        {/* Filters Toggle */}
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="mt-4 text-purple-400 hover:text-purple-300 text-sm font-medium transition-colors"
-        >
-          {showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
-          {hasActiveFilters && (
-            <span className="ml-2 bg-purple-500/20 text-purple-300 text-xs px-2 py-0.5 rounded-full border border-purple-500/30">
-              {Object.values(filters).filter(Boolean).length}
-            </span>
-          )}
-        </button>
-
-        {/* Filters */}
-        {showFilters && (
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 glass p-4 rounded-xl">
-            <FilterSelect
-              label="Temporada"
-              value={filters.season}
-              options={SEASONS}
-              onChange={(v) => updateFilter('season', v)}
-            />
-            <FilterSelect
-              label="Ano"
-              value={filters.year?.toString()}
-              options={YEARS.map(String)}
-              onChange={(v) => updateFilter('year', v ? Number(v) : undefined)}
-            />
-            <FilterSelect
-              label="Status"
-              value={filters.status}
-              options={STATUSES}
-              onChange={(v) => updateFilter('status', v)}
-            />
-            <FilterSelect
-              label="Formato"
-              value={filters.format}
-              options={FORMATS}
-              onChange={(v) => updateFilter('format', v)}
-            />
-            <FilterSelect
-              label="Gênero"
-              value={filters.genre}
-              options={GENRES}
-              onChange={(v) => updateFilter('genre', v)}
-            />
-            <div className="flex items-center gap-2 pt-6">
-              <input
-                type="checkbox"
-                id="availableOnly"
-                checked={filters.availableOnly || false}
-                onChange={(e) => updateFilter('availableOnly', e.target.checked)}
-                className="w-4 h-4 rounded border-white/20 text-purple-500 focus:ring-purple-500/50"
-              />
-              <label htmlFor="availableOnly" className="text-sm text-gray-400">
-                Só com episódios disponíveis
-              </label>
             </div>
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                Limpar Filtros
-              </button>
-            )}
-          </div>
-        )}
+          </form>
+
+          {/* Filters Panel - Below Search */}
+          {showFilters && (
+            <div className="mt-4 p-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <FilterSelect
+                  label="Temporada"
+                  value={filters.season}
+                  options={SEASONS}
+                  values={SEASON_VALUES}
+                  onChange={(v) => updateFilter('season', v)}
+                />
+                <FilterSelect
+                  label="Ano"
+                  value={filters.year?.toString()}
+                  options={YEARS.map(String)}
+                  values={YEARS.map(String)}
+                  onChange={(v) => updateFilter('year', v ? Number(v) : undefined)}
+                />
+                <FilterSelect
+                  label="Status"
+                  value={filters.status}
+                  options={STATUSES}
+                  values={STATUS_VALUES}
+                  onChange={(v) => updateFilter('status', v)}
+                />
+                <FilterSelect
+                  label="Formato"
+                  value={filters.format}
+                  options={FORMATS}
+                  values={FORMAT_VALUES}
+                  onChange={(v) => updateFilter('format', v)}
+                />
+                <FilterSelect
+                  label="Gênero"
+                  value={filters.genre}
+                  options={GENRES}
+                  values={GENRE_VALUES}
+                  onChange={(v) => updateFilter('genre', v)}
+                />
+              </div>
+              {hasActiveFilters && (
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <button
+                    onClick={clearFilters}
+                    className="text-sm text-gray-400 hover:text-white transition-colors"
+                  >
+                    Limpar Filtros
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Results */}
-      <div className="p-8">
-        {loading ? (
+      {/* Results or Default Grid */}
+      <div className="px-8 md:px-16 pb-12">
+        {loading || defaultLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="animate-spin text-purple-500" size={32} />
+            <LoadingAnimation size="md" />
           </div>
-        ) : results.length > 0 ? (
+        ) : displayAnimes.length > 0 ? (
           <>
             <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-xl font-semibold text-white">
-                {query ? `Resultados para "${query}"` : 'Todos os Animes'}
-              </h2>
+              {query && (
+                <h2 className="text-xl font-semibold text-white">
+                  Resultados para "{query}"
+                </h2>
+              )}
               {checkingAvailability && (
                 <span className="text-xs text-gray-500 flex items-center gap-1">
                   <Loader2 className="animate-spin" size={12} />
@@ -224,17 +344,16 @@ export default function Search() {
               )}
             </div>
 
-            {/* Availability summary */}
-            {availableIds.size > 0 && (
+            {results.length > 0 && availableIds.size > 0 && (
               <p className="text-sm text-gray-400 mb-4">
-                {availableIds.size} de {results.length} animes disponíveis no AnimeFire
+                Animes disponíveis
               </p>
             )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {results
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {displayAnimes
                 .filter((anime) => {
-                  if (filters.availableOnly && !availableIds.has(anime.id.toString())) {
+                  if (results.length > 0 && filters.availableOnly && !availableIds.has(anime.id.toString())) {
                     return false;
                   }
                   return true;
@@ -243,67 +362,15 @@ export default function Search() {
                   const result = anilistToAnimeResult(anime);
                   const isAvailable = availableIds.has(anime.id.toString());
                   return (
-                    <div
+                    <AnimeCard
                       key={result.id}
+                      result={result}
+                      isAvailable={isAvailable}
+                      showAvailability={results.length > 0}
+                      isFavorite={favorites.has(result.id)}
+                      onToggleFavorite={toggleFavorite}
                       onClick={() => setLocation(`/anime/${result.id}`)}
-                      className="cursor-pointer group"
-                    >
-                      <div className="relative aspect-[9/13] rounded-xl overflow-hidden mb-2 bg-gray-900 group-hover:border-purple-500/50 transition-all duration-300">
-                        {result.thumbnail ? (
-                          <img
-                            src={result.thumbnail}
-                            alt={result.title}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                            <span className="text-gray-500 text-sm">Sem imagem</span>
-                          </div>
-                        )}
-
-                        {/* Availability badge */}
-                        <div className="absolute top-2 left-2">
-                          {isAvailable ? (
-                            <div className="bg-purple-500/80 backdrop-blur-sm rounded-lg px-2 py-1 flex items-center gap-1 border border-purple-400/30">
-                              <Play size={10} className="fill-white text-white" />
-                              <span className="text-xs font-bold text-white">Disponível</span>
-                            </div>
-                          ) : (
-                            <div className="bg-gray-500/80 backdrop-blur-sm rounded-lg px-2 py-1 flex items-center gap-1 border border-white/10">
-                              <AlertCircle size={10} className="text-white" />
-                              <span className="text-xs font-bold text-white">Indisponível</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {result.score > 0 && (
-                          <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1 flex items-center gap-1 border border-white/10">
-                            <Star size={10} className="text-yellow-400 fill-current" />
-                            <span className="text-xs font-bold text-white">{result.score}</span>
-                          </div>
-                        )}
-
-                        {/* Hover Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-purple-600/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
-                          <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/30">
-                            <Play size={14} className="text-white fill-current" />
-                            <span className="text-white text-sm font-medium">Assistir</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <h3 className="text-sm font-medium line-clamp-2 text-gray-200 group-hover:text-purple-400 transition-colors">
-                        {result.title}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        {result.type && (
-                          <span className="text-xs text-gray-500">{result.type}</span>
-                        )}
-                        {result.year && (
-                          <span className="text-xs text-gray-500">{result.year}</span>
-                        )}
-                      </div>
-                    </div>
+                    />
                   );
                 })}
             </div>
@@ -312,11 +379,7 @@ export default function Search() {
           <div className="text-center py-12">
             <p className="text-gray-400">Nenhum resultado encontrado para "{query}"</p>
           </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-400">Busque por um anime ou use os filtros</p>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -326,28 +389,88 @@ function FilterSelect({
   label,
   value,
   options,
+  values,
   onChange,
 }: {
   label: string;
   value?: string;
   options: string[];
+  values: string[];
   onChange: (value: string | undefined) => void;
 }) {
+  const selectedIndex = value ? values.indexOf(value) : -1;
+
   return (
     <div>
-      <label className="block text-sm font-medium mb-1 text-gray-400">{label}</label>
+      <label className="block text-sm font-medium mb-1.5 text-gray-400">{label}</label>
       <select
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value || undefined)}
-        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50 text-white"
+        value={selectedIndex >= 0 ? selectedIndex : ''}
+        onChange={(e) => {
+          const idx = e.target.value;
+          onChange(idx !== '' ? values[Number(idx)] : undefined);
+        }}
+        className="w-full px-3 py-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-white text-sm"
       >
         <option value="" className="bg-gray-900">Todos</option>
-        {options.map((opt) => (
-          <option key={opt} value={opt} className="bg-gray-900">
+        {options.map((opt, idx) => (
+          <option key={idx} value={idx} className="bg-gray-900">
             {opt}
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function AnimeCard({
+  result,
+  isAvailable,
+  showAvailability,
+  isFavorite,
+  onToggleFavorite,
+  onClick,
+}: {
+  result: any;
+  isAvailable: boolean;
+  showAvailability: boolean;
+  isFavorite: boolean;
+  onToggleFavorite: (id: string, e: React.MouseEvent) => void;
+  onClick: () => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className="cursor-pointer group transition-all duration-300 hover:-translate-y-2 hover:z-10"
+    >
+      <div className="relative aspect-[9/13] rounded-xl overflow-hidden mb-2 bg-gray-900 transition-all duration-300 group-hover:shadow-[0_20px_40px_rgba(124,58,237,0.3)]">
+        {result.thumbnail ? (
+          <img
+            src={result.thumbnail}
+            alt={result.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-800">
+            <span className="text-gray-500 text-xs">Sem imagem</span>
+          </div>
+        )}
+
+        {/* Favorite button */}
+        <button
+          onClick={(e) => onToggleFavorite(result.id, e)}
+          className={`absolute top-2 right-2 p-2 rounded-lg transition-all duration-200 ${
+            isFavorite
+              ? 'bg-purple-500/90 text-white'
+              : 'bg-black/50 text-gray-400 opacity-0 group-hover:opacity-100'
+          }`}
+        >
+          <Bookmark size={16} className={isFavorite ? 'fill-current' : ''} />
+        </button>
+      </div>
+
+      <h3 className="text-sm font-medium text-gray-300 line-clamp-2 group-hover:text-purple-400 transition-colors leading-tight">
+        {result.title}
+      </h3>
     </div>
   );
 }

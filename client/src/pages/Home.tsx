@@ -10,6 +10,7 @@ import {
 import { anilistToAnimeResult } from '@/lib/anilist';
 import { findAnimeSlug, getAnimeDetails } from '@/providers';
 import { Loader2, Play, Bookmark, ChevronLeft, ChevronRight, Film, X, Star } from 'lucide-react';
+import LoadingAnimation from '@/components/LoadingAnimation';
 
 function getCurrentSeason() {
   const month = new Date().getMonth();
@@ -147,7 +148,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-black">
-        <Loader2 className="animate-spin text-purple-500" size={40} />
+        <LoadingAnimation size="lg" />
       </div>
     );
   }
@@ -382,10 +383,11 @@ export default function Home() {
                 >
                   {/* Rank Number - Netflix style outline */}
                   <span
-                    className="text-[200px] font-black select-none leading-none"
+                    className="text-[200px] select-none leading-none"
                     style={{
                       WebkitTextStroke: '4px rgba(124, 58, 237, 0.5)',
                       color: 'transparent',
+                      fontFamily: "'Special Gothic Expanded One', sans-serif",
                     }}
                   >
                     {index + 1}

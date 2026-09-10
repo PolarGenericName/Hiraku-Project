@@ -6,6 +6,7 @@ import { searchAniList } from '@/lib/anilist';
 import type { EpisodeStream } from '@/providers/types';
 import VideoPlayer from '@/components/VideoPlayer';
 import { Loader2, ArrowLeft, Play, Search, ChevronDown, Bookmark, Film, X, Star, Eye } from 'lucide-react';
+import LoadingAnimation from '@/components/LoadingAnimation';
 import {
   isEpisodeCompleted,
   getEpisodeProgressPercent,
@@ -145,7 +146,7 @@ export default function AnimeDetails() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <Loader2 className="animate-spin text-accent" size={40} />
+        <LoadingAnimation size="lg" />
       </div>
     );
   }
@@ -156,7 +157,7 @@ export default function AnimeDetails() {
         <div className="text-center">
           <p className="text-destructive mb-4">{error || 'Anime não encontrado'}</p>
           <button
-            onClick={() => setLocation('/')}
+            onClick={() => window.history.back()}
             className="bg-accent text-white px-4 py-2 rounded-lg"
           >
             Voltar
@@ -190,7 +191,7 @@ export default function AnimeDetails() {
 
         {/* Back Button */}
         <button
-          onClick={() => setLocation('/')}
+          onClick={() => window.history.back()}
           className="absolute top-4 left-4 z-10 bg-background/80 backdrop-blur-sm p-2 rounded-lg hover:bg-background/90 transition-colors"
         >
           <ArrowLeft size={20} />
@@ -213,7 +214,7 @@ export default function AnimeDetails() {
                     className="flex items-center gap-2 bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50"
                   >
                     {loadingPlayer ? (
-                      <Loader2 className="animate-spin" size={18} />
+                      <LoadingAnimation size="sm" />
                     ) : (
                       <Play size={18} className="fill-current" />
                     )}
@@ -255,7 +256,7 @@ export default function AnimeDetails() {
                   className="p-3 rounded-lg text-gray-400 hover:bg-purple-500/20 hover:text-white transition-all duration-300 hover:scale-110 active:scale-95 disabled:opacity-50"
                 >
                   {loadingTrailer ? (
-                    <Loader2 className="animate-spin" size={18} />
+                    <LoadingAnimation size="sm" />
                   ) : (
                     <Film size={18} />
                   )}
@@ -414,7 +415,7 @@ export default function AnimeDetails() {
         {/* Loading states */}
         {loadingEpisodes ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="animate-spin text-accent" size={24} />
+            <LoadingAnimation size="sm" />
           </div>
         ) : !providerSlug ? (
           <div className="text-center py-8">
@@ -457,7 +458,7 @@ export default function AnimeDetails() {
                     </div>
                     {/* Watched badge */}
                     {completed && (
-                      <div className="absolute top-2 right-2 bg-green-500/90 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+                      <div className="absolute top-2 right-2 bg-purple-500/90 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
                         <Eye size={12} />
                         Assistido
                       </div>

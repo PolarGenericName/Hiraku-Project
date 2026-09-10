@@ -257,7 +257,7 @@ const HERO_QUERY = `
 // ============================================================================
 
 export async function searchAniList(
-  search: string,
+  search: string | undefined,
   filters?: {
     season?: string;
     year?: number;
@@ -269,7 +269,7 @@ export async function searchAniList(
   perPage: number = 20
 ): Promise<AniListMedia[]> {
   const data = await query<AniListGraphQLResponse>(SEARCH_QUERY, {
-    search,
+    search: search || undefined,
     page,
     perPage,
     season: filters?.season || undefined,

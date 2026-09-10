@@ -126,8 +126,11 @@ export async function findAnimeSlug(
     for (const r of results) {
       if (resultHasYearConflict(searchYear, r)) continue;
       const normalizedResult = normalizeTitle(r.title);
+      const resultWords = normalizedResult.split(' ');
+      // Require ALL search words to match AND at least 60% of result words to match
       const allWordsMatch = searchWords.every(w => normalizedResult.includes(w));
-      if (allWordsMatch && searchWords.length >= 2 && !wordMatchIds.has(r.id)) {
+      const matchRatio = searchWords.filter(w => normalizedResult.includes(w)).length / Math.max(searchWords.length, 1);
+      if (allWordsMatch && searchWords.length >= 2 && matchRatio >= 0.6 && !wordMatchIds.has(r.id)) {
         wordMatchIds.add(r.id);
         wordMatches.push({ id: r.id, title: r.title });
       }
