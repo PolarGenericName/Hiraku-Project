@@ -18,6 +18,7 @@ export interface AnimeDetails {
   id: string;
   title: string;
   titlePtBr?: string;
+  titleJp?: string;
   titleAlternative?: string;
   description?: string;
   thumbnail?: string;

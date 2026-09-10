@@ -25,6 +25,19 @@ async function apiGet<T>(path: string): Promise<T> {
   return response.json();
 }
 
+/**
+ * Get just the original JP title from AnimeFire detail page.
+ * Lightweight - only extracts the title field.
+ */
+export async function getAnimeOriginalTitle(id: string): Promise<string | null> {
+  try {
+    const json = await apiGet<any>(`/anime/${id}`);
+    return json.data?.hero?.titles?.JP || null;
+  } catch {
+    return null;
+  }
+}
+
 export class AnimeFireProvider implements AnimeProvider {
   id = 'animefire';
   name = 'AnimeFire';
@@ -68,6 +81,7 @@ export class AnimeFireProvider implements AnimeProvider {
         id,
         title: hero.titles?.BR || hero.titles?.EN || '',
         titlePtBr: hero.titles?.BR,
+        titleJp: hero.titles?.JP,
         description: hero.synopsis,
         thumbnail: hero.poster_src,
         bannerImage: hero.backdrop_src,

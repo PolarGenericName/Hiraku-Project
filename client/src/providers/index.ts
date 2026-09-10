@@ -172,8 +172,8 @@ export async function findAnimeSlug(
   const ambiguousMatches = [...exactMatches, ...wordMatches];
   const disambiguateFrom = ambiguousMatches.length > 1 ? ambiguousMatches : allCandidates;
 
-  if (disambiguateFrom.length > 1 && (searchYear || anilistEpisodes)) {
-    console.log(`[FindSlug] ${ambiguousMatches.length} ambiguous matches, checking details...`);
+  if (disambiguateFrom.length > 0 && (searchYear || anilistEpisodes || ambiguousMatches.length > 1)) {
+    console.log(`[FindSlug] Checking details for ${disambiguateFrom.length} candidates...`);
 
     // Sort: prioritize candidates that appeared in exact/word matches
     const exactIds = new Set(exactMatches.map(m => m.id));
@@ -191,10 +191,21 @@ export async function findAnimeSlug(
         const details = await provider.getAnimeDetails(candidate.id);
         if (!details) continue;
 
-        console.log(`[FindSlug]   Detail: ${candidate.id} "${candidate.title}" eps:${details.totalEpisodes} year:${details.year}`);
+        console.log(`[FindSlug]   Detail: ${candidate.id} "${candidate.title}" eps:${details.totalEpisodes} year:${details.year} jp:${details.titleJp}`);
 
         const detailYear = details.year;
         const detailEps = details.totalEpisodes;
+
+        // Check if the JP original title matches any of our search titles
+        if (details.titleJp) {
+          const normalizedJp = normalizeTitle(details.titleJp);
+          for (const searchTitle of titles) {
+            if (normalizeTitle(searchTitle) === normalizedJp) {
+              console.log('[FindSlug] JP TITLE match:', details.titleJp, '->', candidate.id);
+              return candidate.id;
+            }
+          }
+        }
 
         // If we have a year, prefer matching year
         if (searchYear && detailYear?.toString() === searchYear) {
