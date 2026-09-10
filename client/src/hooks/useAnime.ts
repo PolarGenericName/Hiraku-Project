@@ -163,7 +163,8 @@ export function useAnimeDetails(id: number | null): UseAnimeDetailsResult {
           media.title.english,
           media.seasonYear,
           media.episodes,
-          media.status
+          media.status,
+          media.title.native
         );
 
         setProviderSlug(slug);

@@ -92,7 +92,8 @@ export default function Home() {
             anime.title?.english,
             anime.seasonYear,
             anime.episodes,
-            anime.status
+            anime.status,
+            anime.title?.native
           );
           if (slug) {
             const details = await getAnimeDetails(slug);

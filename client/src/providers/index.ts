@@ -70,7 +70,8 @@ export async function findAnimeSlug(
   englishTitle?: string,
   anilistYear?: number,
   anilistEpisodes?: number,
-  anilistStatus?: string
+  anilistStatus?: string,
+  nativeTitle?: string
 ): Promise<string | null> {
   // Skip search for anime not yet released
   if (anilistStatus === 'NOT_YET_RELEASED' || anilistStatus === 'NOT_YET_RELEASED_OR_FINISHED') {
@@ -81,7 +82,7 @@ export async function findAnimeSlug(
   console.log('[FindSlug] Searching:', romajiTitle, englishTitle ? `/ ${englishTitle}` : '', anilistYear ? `year:${anilistYear}` : '', anilistEpisodes ? `eps:${anilistEpisodes}` : '');
 
   const searchYear = anilistYear?.toString() || extractYear(romajiTitle) || extractYear(englishTitle || '');
-  const titles = [romajiTitle, englishTitle].filter(Boolean) as string[];
+  const titles = [romajiTitle, englishTitle, nativeTitle].filter(Boolean) as string[];
 
   // Collect all unique candidate slugs across all title searches
   const allCandidates: { id: string; title: string }[] = [];
@@ -224,7 +225,7 @@ export async function findAnimeSlug(
  * Returns a Set of AniList IDs that are available on AnimeFire.
  */
 export async function batchCheckAvailability(
-  animes: { id: string; title: string; titleAlternative?: string; year?: number; episodes?: number; status?: string }[]
+  animes: { id: string; title: string; titleAlternative?: string; nativeTitle?: string; year?: number; episodes?: number; status?: string }[]
 ): Promise<Set<string>> {
   const available = new Set<string>();
 
@@ -234,7 +235,7 @@ export async function batchCheckAvailability(
     const batch = animes.slice(i, i + batchSize);
     const results = await Promise.allSettled(
       batch.map(async (anime) => {
-        const slug = await findAnimeSlug(anime.title, anime.titleAlternative, anime.year, anime.episodes, anime.status);
+        const slug = await findAnimeSlug(anime.title, anime.titleAlternative, anime.year, anime.episodes, anime.status, anime.nativeTitle);
         if (slug) {
           try {
             const episodes = await getEpisodes(slug);

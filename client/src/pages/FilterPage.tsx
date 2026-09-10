@@ -72,6 +72,7 @@ export default function FilterPage({ format, title }: FilterPageProps) {
               id: anime.id.toString(),
               title: anime.title?.romaji || anime.title?.english || '',
               titleAlternative: anime.title?.english,
+              nativeTitle: anime.title?.native,
               year: anime.seasonYear,
               episodes: anime.episodes,
               status: anime.status,
