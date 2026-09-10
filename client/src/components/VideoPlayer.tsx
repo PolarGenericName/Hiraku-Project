@@ -385,7 +385,7 @@ export default function VideoPlayer({ stream, animeId, onClose, onNextEpisode }:
       {/* Buffering spinner */}
       {isBuffering && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className="w-14 h-14 border-[3px] border-accent border-t-transparent rounded-full animate-spin" />
+          <div className="player-loader" />
         </div>
       )}
 

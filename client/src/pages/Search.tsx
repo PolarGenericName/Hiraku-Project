@@ -327,7 +327,7 @@ export default function Search() {
       <div className="px-8 md:px-16 pb-12">
         {loading || defaultLoading ? (
           <div className="flex items-center justify-center py-12">
-            <LoadingAnimation size="md" />
+            <LoadingAnimation />
           </div>
         ) : displayAnimes.length > 0 ? (
           <>

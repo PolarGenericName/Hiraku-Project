@@ -353,7 +353,9 @@ export function anilistToAnimeResult(media: AniListMedia) {
  * Remove qualquer entrada que tenha "Season", "2nd", "3rd" etc no título.
  */
 export function filterSeasonDuplicates(media: AniListMedia[]): AniListMedia[] {
-  const seasonPattern = /Season|2nd|3rd|4th|5th|6th|7th|Part\s*\d+|Cour\s*\d+/i;
+  // Match "Season X" at start or standalone, "2nd/3rd/etc Season", "Part X", "Cour X"
+  // But NOT "Seasons 1 & 2" which is a legitimate first entry combining seasons
+  const seasonPattern = /^Season\s+\d|Season\s+\d|2nd|3rd|4th|5th|6th|7th|Part\s*\d+|Cour\s*\d+/i;
 
   return media.filter((item) => {
     const titleRomaji = item.title?.romaji || '';

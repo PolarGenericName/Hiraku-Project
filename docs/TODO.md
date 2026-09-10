@@ -1,21 +1,49 @@
 # Próximos Passos - Hiraku
 
-## 🔒 Auditoria de Segurança e Estabilidade (PRÓXIMO)
+## 🔌 Integração Stremio (PRÓXIMO)
 
 ### Prioridade: Alta
+- [ ] Estudar manifest.json dos addons (Froststream, Zeus)
+- [ ] Criar interface `AnimeProvider` para Stremio
+- [ ] Implementar FroststreamProvider
+- [ ] Implementar ZeusProvider
+- [ ] Adicionar seletor de provider no player (ao lado de legendas)
+- [ ] Fallback de busca entre providers (se AnimeFire não tiver)
+- [ ] Testar streams de cada provider
+
+### Manifest URLs
+- Froststream: `https://froststream.cloutteam.com/.../manifest.json`
+- Zeus: `https://398fe185fed6-zeus.baby-beamup.club/.../manifest.json`
+
+### Estrutura Planejada
+```
+providers/
+├── animefire.ts      # Provider atual
+├── stremio.ts        # Base para addons Stremio
+├── froststream.ts    # Froststream addon
+├── zeus.ts           # Zeus addon
+├── index.ts          # Registry + fallback logic
+└── types.ts          # Tipos compartilhados
+```
+
+### UI Planejada
+- Player: menu de provider ao lado de legendas
+- Estilo: dropdown/ pills estilo Netflix
+- Opções: AnimeFire, Froststream, Zeus
+
+## 🔒 Auditoria de Segurança e Estabilidade
+
+### Prioridade: Média
 - [ ] Revisar headers de segurança no proxy
 - [ ] Validar inputs do usuário (XSS, injetção)
 - [ ] Rate limiting no server
 - [ ] Tratamento de erros robusto
 - [ ] Validação de URLs de stream
-- [ ] Proteção contra CSRF
-- [ ] Logs de auditoria
 
-### Prioridade: Média
+### Prioridade: Baixa
 - [ ] Testes unitários (Vitest)
 - [ ] Testes de integração
 - [ ] Coverage mínimo de 70%
-- [ ] CI/CD pipeline
 
 ## ⚡ Performance
 
@@ -24,7 +52,6 @@
 - [ ] Memoização de componentes (React.memo)
 - [ ] Virtualização de listas longas
 - [ ] Compressão de imagens (WebP)
-- [ ] Service worker para cache
 
 ### Bundle
 - [ ] Code splitting por rota
@@ -40,7 +67,6 @@
 
 ### Menores
 - [ ] Set iteration (TS2802) - requer downlevelIteration
-- [ ] Trailer modal: fecha ao clicar fora (pode ser melhorado)
 
 ## 🎨 UX/UI
 
@@ -48,14 +74,12 @@
 - [ ] Skeleton loading em vez de spinner
 - [ ] Animações de transição entre páginas
 - [ ] Toast notifications para ações
-- [ ] Modo escuro/claro (já usa shadcn)
 - [ ] Responsividade mobile completa
 
 ### Acessibilidade
 - [ ] ARIA labels em botões
 - [ ] Navegação por teclado
 - [ ] Contraste de cores
-- [ ] Tamanhos de toque (mobile)
 
 ## 📱 Mobile
 
@@ -75,7 +99,6 @@
 - [ ] Cache de respostas (Redis/Memory)
 - [ ] Rate limiting por IP
 - [ ] Health check endpoint
-- [ ] Métricas de uso
 
 ### APIs
 - [ ] Retry automático em falhas
@@ -88,12 +111,10 @@
 - [ ] Episódios assistidos
 - [ ] Tempo de permanência
 - [ ] Animes mais populares
-- [ ] Erros frequentes
 
 ### Implementação
 - [ ] Google Analytics ou Plausible
 - [ ] Event tracking customizado
-- [ ] Dashboard interno
 
 ## 🚀 Deploy
 
@@ -108,30 +129,13 @@
 - [ ] Railway/Render (server)
 - [ ] Docker para server
 
-## 📝 Documentação
-
-### Completar
-- [ ] API documentation (OpenAPI)
-- [ ] Guia de contribuição
-- [ ] CODE_OF_CONDUCT.md
-- [ ] LICENSE
-
-### Manter
-- [ ] Atualizar README.md
-- [ ] Screenshots/GIFs
-- [ ] Changelog atualizado
-
 ## 🎯 Features Futuras
-
-### Curto Prazo
-- [ ] Sistema de avaliações (1-5 estrelas)
-- [ ] Comentários em episódios
-- [ ] Lista de assistidos
 
 ### Médio Prazo
 - [ ] Notificações de novos episódios
 - [ ] Perfil de usuário
 - [ ] Sync entre dispositivos
+- [ ] Sistema de avaliações
 
 ### Longo Prazo
 - [ ] IA para recomendações
@@ -144,9 +148,3 @@
 - [ ] Atualizar dependências (pnpm update)
 - [ ] Revisar logs de erro
 - [ ] Monitorar performance
-- [ ] Backup de dados
-
-### Security
-- [ ] Auditoria de vulnerabilidades
-- [ ] Atualizar packages de segurança
-- [ ] Revisar permissões

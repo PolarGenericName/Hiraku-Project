@@ -1,6 +1,6 @@
 # 🎬 Hiraku - Anime Streaming PT-BR
 
-![Hiraku](https://img.shields.io/badge/Hiraku-v1.1.0-purple)
+![Hiraku](https://img.shields.io/badge/Hiraku-v1.2.0-purple)
 ![React](https://img.shields.io/badge/React-19-61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4-06B6D4)
@@ -15,6 +15,7 @@ Aplicativo de streaming de anime em português brasileiro, construído com tecno
 - **Sistema de progressão** - salva onde você parou
 - **Favoritos** - salve seus animes preferidos
 - **Busca inteligente** por título, gênero, ano
+- **Páginas de filtro** - Animes e Filmes separados
 - **Top 10** estilo Netflix
 - **Trailers** do YouTube
 - **Classificação indicativa** oficial

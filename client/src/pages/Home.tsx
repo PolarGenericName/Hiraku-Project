@@ -149,7 +149,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-black">
-        <LoadingAnimation size="lg" />
+        <LoadingAnimation />
       </div>
     );
   }

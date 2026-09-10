@@ -17,6 +17,10 @@ const animefireProvider = new AnimeFireProvider();
 
 const provider: AnimeProvider = animefireProvider;
 
+// Cache de títulos JP: slug -> { jpTitle, year, episodes }
+// Evita buscar detalhes repetidamente para o mesmo anime
+const jpTitleCache = new Map<string, { jpTitle: string; year?: number; episodes?: number }>();
+
 export async function searchAnime(query: string): Promise<AnimeResult[]> {
   return provider.search(query);
 }
@@ -82,7 +86,22 @@ export async function findAnimeSlug(
   console.log('[FindSlug] Searching:', romajiTitle, englishTitle ? `/ ${englishTitle}` : '', anilistYear ? `year:${anilistYear}` : '', anilistEpisodes ? `eps:${anilistEpisodes}` : '');
 
   const searchYear = anilistYear?.toString() || extractYear(romajiTitle) || extractYear(englishTitle || '');
-  const titles = [romajiTitle, englishTitle, nativeTitle].filter(Boolean) as string[];
+  // Only search with romaji and english - native (Japanese) doesn't work on AnimeFire
+  const titles = [romajiTitle, englishTitle].filter(Boolean) as string[];
+
+  // Check cache first for known JP titles
+  // Look up by searching cached JP titles against our search titles
+  for (const [slug, cached] of jpTitleCache) {
+    const normalizedJp = normalizeTitle(cached.jpTitle);
+    for (const searchTitle of titles) {
+      if (normalizeTitle(searchTitle) === normalizedJp) {
+        // Check year conflict if we have year info
+        if (searchYear && cached.year && cached.year.toString() !== searchYear) continue;
+        console.log('[FindSlug] CACHE hit:', cached.jpTitle, '->', slug);
+        return slug;
+      }
+    }
+  }
 
   // Collect all unique candidate slugs across all title searches
   const allCandidates: { id: string; title: string }[] = [];
@@ -193,6 +212,15 @@ export async function findAnimeSlug(
 
         console.log(`[FindSlug]   Detail: ${candidate.id} "${candidate.title}" eps:${details.totalEpisodes} year:${details.year} jp:${details.titleJp}`);
 
+        // Cache the JP title info for future lookups
+        if (details.titleJp) {
+          jpTitleCache.set(candidate.id, {
+            jpTitle: details.titleJp,
+            year: details.year,
+            episodes: details.totalEpisodes,
+          });
+        }
+
         const detailYear = details.year;
         const detailEps = details.totalEpisodes;
 
@@ -233,7 +261,7 @@ export async function findAnimeSlug(
 
 /**
  * Quick slug search for batch availability checking.
- * Only searches romaji/english title and checks year match - no detail fetching.
+ * Uses cache for known JP titles, falls back to romaji/english search with year match.
  * Much faster than findAnimeSlug for batch operations.
  */
 async function findAnimeSlugQuick(
@@ -243,6 +271,19 @@ async function findAnimeSlugQuick(
 ): Promise<string | null> {
   const searchYear = anilistYear?.toString() || extractYear(romajiTitle) || extractYear(englishTitle || '');
   const titles = [romajiTitle, englishTitle].filter(Boolean) as string[];
+
+  // Check cache first
+  for (const [slug, cached] of jpTitleCache) {
+    const normalizedJp = normalizeTitle(cached.jpTitle);
+    for (const searchTitle of titles) {
+      if (normalizeTitle(searchTitle) === normalizedJp) {
+        if (searchYear && cached.year && cached.year.toString() !== searchYear) continue;
+        console.log('[FindSlugQuick] CACHE hit:', cached.jpTitle, '->', slug);
+        return slug;
+      }
+    }
+  }
+
   const seenIds = new Set<string>();
 
   for (const title of titles) {
@@ -281,6 +322,7 @@ async function findAnimeSlugQuick(
 /**
  * Batch check availability for multiple anime (used in search results).
  * Returns a Set of AniList IDs that are available on AnimeFire.
+ * Verifies episode count matches AniList data.
  */
 export async function batchCheckAvailability(
   animes: { id: string; title: string; titleAlternative?: string; nativeTitle?: string; year?: number; episodes?: number; status?: string }[]
@@ -298,7 +340,19 @@ export async function batchCheckAvailability(
           try {
             const episodes = await getEpisodes(slug);
             if (episodes.length > 0) {
-              available.add(anime.id);
+              // Verify episode count: allow up to 2x difference (combined seasons, etc.)
+              const anilistEps = anime.episodes;
+              if (anilistEps && episodes.length > 0) {
+                const ratio = episodes.length / anilistEps;
+                // Accept if AnimeFire has >= AniList eps (combined seasons) or close match
+                if (ratio >= 0.5 && ratio <= 3) {
+                  available.add(anime.id);
+                } else {
+                  console.log(`[BatchCheck] ${anime.title}: eps mismatch AniList:${anilistEps} vs AnimeFire:${episodes.length}`);
+                }
+              } else {
+                available.add(anime.id);
+              }
             }
           } catch {}
         }

@@ -145,8 +145,8 @@ export default function AnimeDetails() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <LoadingAnimation size="lg" />
+      <div className="flex items-center justify-center h-screen bg-black">
+        <LoadingAnimation />
       </div>
     );
   }
@@ -214,7 +214,7 @@ export default function AnimeDetails() {
                     className="flex items-center gap-2 bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50"
                   >
                     {loadingPlayer ? (
-                      <LoadingAnimation size="sm" />
+                      <Loader2 size={18} className="animate-spin" />
                     ) : (
                       <Play size={18} className="fill-current" />
                     )}
@@ -256,7 +256,7 @@ export default function AnimeDetails() {
                   className="p-3 rounded-lg text-gray-400 hover:bg-purple-500/20 hover:text-white transition-all duration-300 hover:scale-110 active:scale-95 disabled:opacity-50"
                 >
                   {loadingTrailer ? (
-                    <LoadingAnimation size="sm" />
+                    <Loader2 size={18} className="animate-spin" />
                   ) : (
                     <Film size={18} />
                   )}
@@ -415,7 +415,7 @@ export default function AnimeDetails() {
         {/* Loading states */}
         {loadingEpisodes ? (
           <div className="flex items-center justify-center py-8">
-            <LoadingAnimation size="sm" />
+            <Loader2 size={24} className="animate-spin text-muted-foreground" />
           </div>
         ) : !providerSlug ? (
           <div className="text-center py-8">
@@ -524,11 +524,6 @@ export default function AnimeDetails() {
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                       <Play size={24} />
-                    </div>
-                  )}
-                  {rec.audio && (
-                    <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-1.5 py-0.5 rounded">
-                      {rec.audio.includes('Dublado') ? 'DUB' : 'LEG'}
                     </div>
                   )}
                 </div>

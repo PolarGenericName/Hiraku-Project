@@ -270,9 +270,9 @@ code, pre {
 /* Page flip loading animation - From Uiverse.io by vk-uiux */
 .loader {
   position: relative;
-  width: 33px;
-  height: 33px;
-  perspective: 67px;
+  width: 64px;
+  height: 64px;
+  perspective: 130px;
 }
 
 .loader div {
@@ -317,5 +317,71 @@ code, pre {
   90%, 100% {
     opacity: 0;
     transform: rotateY(-180deg);
+  }
+}
+
+/* Player buffering animation - From Uiverse.io by ZacharyCrespin */
+.player-loader {
+  --size: 30px;
+  --color: #7c3aed;
+  width: 100px;
+  height: 100px;
+  position: relative;
+}
+
+.player-loader::after,
+.player-loader::before {
+  box-sizing: border-box;
+  position: absolute;
+  content: "";
+  width: var(--size);
+  height: var(--size);
+  top: 50%;
+  animation: pl-up 2.4s cubic-bezier(0, 0, 0.24, 1.21) infinite;
+  left: 50%;
+  background: var(--color);
+  box-shadow: 0 0 calc(var(--size) / 3) rgba(0, 0, 0, 0.25);
+}
+
+.player-loader::after {
+  background: var(--color);
+  top: calc(50% - var(--size));
+  left: calc(50% - var(--size));
+  animation: pl-down 2.4s cubic-bezier(0, 0, 0.24, 1.21) infinite;
+}
+
+@keyframes pl-down {
+  0%, 100% {
+    transform: none;
+  }
+
+  25% {
+    transform: translateX(100%);
+  }
+
+  50% {
+    transform: translateX(100%) translateY(100%);
+  }
+
+  75% {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes pl-up {
+  0%, 100% {
+    transform: none;
+  }
+
+  25% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(-100%) translateY(-100%);
+  }
+
+  75% {
+    transform: translateY(-100%);
   }
 }

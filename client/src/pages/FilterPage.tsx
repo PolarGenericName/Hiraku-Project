@@ -164,7 +164,7 @@ export default function FilterPage({ format, title }: FilterPageProps) {
       <div className="px-8 md:px-16 pb-12">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <LoadingAnimation size="md" />
+            <LoadingAnimation />
           </div>
         ) : results.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
