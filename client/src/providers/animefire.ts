@@ -54,7 +54,7 @@ export class AnimeFireProvider implements AnimeProvider {
         title: item.title,
         thumbnail: item.poster_src,
         type: 'TV',
-        year: item.year,
+        year: item.published_at ? parseInt(item.published_at.substring(0, 4)) : undefined,
       }));
 
       console.log('[AnimeFire] Search results:', results.length);
@@ -89,6 +89,7 @@ export class AnimeFireProvider implements AnimeProvider {
         status: hero.status,
         type: data.format || 'TV',
         genres,
+        year: hero.published_at ? parseInt(hero.published_at.substring(0, 4)) : undefined,
         totalEpisodes: data.episodes?.length,
         ageRating: hero.age_rating ? String(hero.age_rating) : undefined,
         nextAir: hero.next_air ? {
