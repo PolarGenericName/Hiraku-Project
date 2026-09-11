@@ -7,23 +7,29 @@ import {
 } from 'lucide-react';
 import type { EpisodeStream } from '@/providers/types';
 import { saveEpisodeProgress, getResumeTime } from '@/lib/watchProgress';
+import { useAccount } from '@/contexts/AccountContext';
 
 interface VideoPlayerProps {
   stream: EpisodeStream;
   animeId: string;
+  animeTitle?: string;
+  animeCover?: string;
+  animeGenres?: string[];
+  animeYear?: number;
   onClose: () => void;
   onNextEpisode?: () => void;
 }
 
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
-export default function VideoPlayer({ stream, animeId, onClose, onNextEpisode }: VideoPlayerProps) {
+export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, animeGenres, animeYear, onClose, onNextEpisode }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<dashjs.MediaPlayerClass | null>(null);
   const hideControlsTimer = useRef<ReturnType<typeof setTimeout>>();
   const volumeHoverTimer = useRef<ReturnType<typeof setTimeout>>();
+  const { addToHistory } = useAccount();
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -147,17 +153,50 @@ export default function VideoPlayer({ stream, animeId, onClose, onNextEpisode }:
 
     let lastSaveTime = 0;
 
-    const onPlay = () => { setIsPlaying(true); setIsBuffering(false); };
+    const buildDiscordPayload = (playing: boolean) => {
+      const genreText = animeGenres && animeGenres.length > 0 ? animeGenres.slice(0, 2).join(' • ') : '';
+      const yearText = animeYear ? String(animeYear) : '';
+      const metaText = [genreText, yearText].filter(Boolean).join(' • ');
+      const titleLine = `${animeTitle || stream.title || ''} (T${stream.season} E${stream.number})`;
+      const payload: any = {
+        details: titleLine,
+        state: stream.title,
+        largeImageKey: animeCover || 'hiraku',
+        largeImageText: metaText || 'Hiraku',
+        smallImageKey: 'hiraku',
+        smallImageText: playing ? 'Hiraku' : 'Pausado',
+        type: 3,
+      };
+      if (playing && video.duration > 0) {
+        payload.startTimestamp = Date.now() - video.currentTime * 1000;
+        payload.endTimestamp = Date.now() + (video.duration - video.currentTime) * 1000;
+      }
+      return payload;
+    };
+
+    const onPlay = () => {
+      setIsPlaying(true);
+      setIsBuffering(false);
+      addToHistory({
+        animeId,
+        animeTitle: animeTitle || stream.title || '',
+        animeCover: animeCover || '',
+        episodeId: stream.episodeId,
+        episodeNumber: stream.number,
+        season: stream.season,
+        watchedAt: Date.now(),
+      });
+      window.electronAPI?.setActivity(buildDiscordPayload(true));
+    };
     const onPause = () => {
       setIsPlaying(false);
-      // Save progress on pause
       if (video.currentTime > 0 && video.duration > 0) {
         saveEpisodeProgress(animeId, stream.episodeId, stream.number, stream.season, video.currentTime, video.duration);
       }
+      window.electronAPI?.setActivity(buildDiscordPayload(false));
     };
     const onTimeUpdate = () => {
       setCurrentTime(video.currentTime);
-      // Save progress every 5 seconds
       if (video.currentTime - lastSaveTime >= 5 && video.duration > 0) {
         lastSaveTime = video.currentTime;
         saveEpisodeProgress(animeId, stream.episodeId, stream.number, stream.season, video.currentTime, video.duration);
@@ -165,11 +204,13 @@ export default function VideoPlayer({ stream, animeId, onClose, onNextEpisode }:
     };
     const onLoadedMetadata = () => {
       setDuration(video.duration);
-      // Resume from saved position
       const resumeTime = getResumeTime(animeId, stream.episodeId);
       if (resumeTime > 0 && video.currentTime === 0) {
         video.currentTime = resumeTime;
         console.log('[Player] Resuming from:', resumeTime);
+      }
+      if (video.duration > 0) {
+        window.electronAPI?.setActivity(buildDiscordPayload(true));
       }
       if (!tryGetQualities()) {
         setTimeout(tryGetQualities, 1000);
@@ -185,6 +226,8 @@ export default function VideoPlayer({ stream, animeId, onClose, onNextEpisode }:
       if (video.duration > 0) {
         saveEpisodeProgress(animeId, stream.episodeId, stream.number, stream.season, video.duration, video.duration);
       }
+      // Clear Discord activity
+      window.electronAPI?.clearActivity();
     };
 
     video.addEventListener('play', onPlay);
@@ -205,6 +248,8 @@ export default function VideoPlayer({ stream, animeId, onClose, onNextEpisode }:
       video.removeEventListener('ended', onEnded);
       player.destroy();
       playerRef.current = null;
+      // Clear Discord Rich Presence when player closes
+      window.electronAPI?.clearActivity();
     };
   }, [selectedAudio, currentStream?.url]);
 

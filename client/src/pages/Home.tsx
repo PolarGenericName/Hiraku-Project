@@ -11,6 +11,8 @@ import { anilistToAnimeResult } from '@/lib/anilist';
 import { findAnimeSlug, getAnimeDetails } from '@/providers';
 import { Loader2, Play, Bookmark, ChevronLeft, ChevronRight, Film, X, Star } from 'lucide-react';
 import LoadingAnimation from '@/components/LoadingAnimation';
+import { useAccount } from '@/contexts/AccountContext';
+import { getEpisodeProgressPercent } from '@/lib/watchProgress';
 
 function getCurrentSeason() {
   const month = new Date().getMonth();
@@ -35,9 +37,9 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const [heroIndex, setHeroIndex] = useState(0);
   const [trailerAnime, setTrailerAnime] = useState<any>(null);
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [ptBrDescriptions, setPtBrDescriptions] = useState<Record<number, string>>({});
-  const [watchHistory, setWatchHistory] = useState<any[]>([]);
+  const { getHistory, toggleSavedAnime, isSaved } = useAccount();
+  const watchHistory = getHistory();
 
   const { animes: heroAnimes, loading: loadingHero } = useHeroAnimes(5);
   const { animes: trending } = useTrendingAnime(20);
@@ -113,27 +115,12 @@ export default function Home() {
 
   const heroAnime = heroAnimes[heroIndex];
 
-  // Load watch history from localStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('hiraku_watch_history');
-      if (stored) {
-        setWatchHistory(JSON.parse(stored));
-      }
-    } catch {}
-  }, []);
-
   const hasWatchHistory = watchHistory.length > 0;
 
   const toggleFavorite = useCallback((id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+    toggleSavedAnime(id);
+  }, [toggleSavedAnime]);
 
   const openTrailer = useCallback((anime: any, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -228,12 +215,12 @@ export default function Home() {
                 <button
                   onClick={(e) => toggleFavorite(String(heroAnime.id), e)}
                   className={`p-3.5 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 ${
-                    favorites.has(String(heroAnime.id))
+                    isSaved(String(heroAnime.id))
                       ? 'bg-purple-500/20 text-purple-400'
                       : 'text-gray-400 hover:bg-purple-500/20 hover:text-purple-400'
                   }`}
                 >
-                  <Bookmark size={22} className={favorites.has(String(heroAnime.id)) ? 'fill-current' : ''} />
+                  <Bookmark size={22} className={isSaved(String(heroAnime.id)) ? 'fill-current' : ''} />
                 </button>
 
                 {heroAnime.trailer?.site === 'youtube' && (
@@ -310,23 +297,34 @@ export default function Home() {
           <section className="px-8 md:px-16">
             <h2 className="text-2xl font-bold text-white mb-4">Continuar Assistindo</h2>
             <HorizontalScroll>
-              {watchHistory.map((item: any) => (
-                <AnimeCard
-                  key={item.anilistId}
-                  result={{
-                    id: String(item.anilistId),
-                    title: item.title || '',
-                    titleAlternative: undefined,
-                    thumbnail: item.thumbnail || '',
-                    score: 0,
-                    type: 'TV',
-                    year: undefined,
-                    season: undefined,
-                  }}
-                  isFavorite={false}
-                  onToggleFavorite={() => {}}
-                  onClick={() => setLocation(`/anime/${item.anilistId}`)}
-                />
+              {watchHistory.map((item, i) => (
+                <div
+                  key={`${item.animeId}-${item.episodeId}-${i}`}
+                  className="flex-shrink-0 w-44 cursor-pointer group/card transition-all duration-300 hover:scale-105 hover:z-10"
+                  onClick={() => setLocation(`/anime/${item.animeId}?episode=${item.episodeId}&season=${item.season}`)}
+                >
+                  <div className="relative aspect-[9/13] rounded-xl overflow-hidden mb-2 bg-gray-900 group-hover/card:border-purple-500/50 transition-all duration-300 group-hover/card:shadow-[0_0_30px_rgba(124,58,237,0.4)]">
+                    <img
+                      src={item.animeCover}
+                      alt={item.animeTitle}
+                      className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500"
+                    />
+                    {/* Progress bar */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
+                      <div
+                        className="h-full bg-purple-500"
+                        style={{ width: `${getEpisodeProgressPercent(item.animeId, item.episodeId)}%` }}
+                      />
+                    </div>
+                    {/* Episode badge */}
+                    <div className="absolute top-2 left-2 bg-black/70 px-2 py-0.5 rounded text-xs text-white">
+                      Ep. {item.episodeNumber}
+                    </div>
+                  </div>
+                  <h3 className="text-sm font-medium text-gray-300 line-clamp-2 group-hover/card:text-purple-400 transition-colors leading-tight">
+                    {item.animeTitle}
+                  </h3>
+                </div>
               ))}
             </HorizontalScroll>
           </section>
@@ -342,7 +340,7 @@ export default function Home() {
                 <AnimeCard
                   key={result.id}
                   result={result}
-                  isFavorite={favorites.has(result.id)}
+                  isFavorite={isSaved(result.id)}
                   onToggleFavorite={toggleFavorite}
                   onClick={() => setLocation(`/anime/${result.id}`)}
                 />
@@ -361,7 +359,7 @@ export default function Home() {
                 <AnimeCard
                   key={result.id}
                   result={result}
-                  isFavorite={favorites.has(result.id)}
+                  isFavorite={isSaved(result.id)}
                   onToggleFavorite={toggleFavorite}
                   onClick={() => setLocation(`/anime/${result.id}`)}
                 />
@@ -373,47 +371,49 @@ export default function Home() {
         {/* 4. Top 10 */}
         <section>
           <h2 className="text-2xl font-bold text-white mb-4 px-8 md:px-16">Top 10</h2>
-          <div className="flex overflow-visible px-8 md:px-16 pb-4 pt-4">
-            {[...heroAnimes, ...popular].slice(0, 10).map((anime, index) => {
-              const result = anilistToAnimeResult(anime);
-              return (
-                <div
-                  key={result.id}
-                  onClick={() => setLocation(`/anime/${result.id}`)}
-                  className="flex-shrink-0 flex items-center cursor-pointer group/card mx-4 transition-all duration-300 hover:scale-105 hover:z-10"
-                >
-                  {/* Rank Number - Netflix style outline */}
-                  <span
-                    className="text-[200px] select-none leading-none"
-                    style={{
-                      WebkitTextStroke: '4px rgba(124, 58, 237, 0.5)',
-                      color: 'transparent',
-                      fontFamily: "'Special Gothic Expanded One', sans-serif",
-                    }}
+          <HorizontalScroll>
+            <div className="flex gap-2 pt-4">
+              {[...heroAnimes, ...popular].slice(0, 10).map((anime, index) => {
+                const result = anilistToAnimeResult(anime);
+                return (
+                  <div
+                    key={result.id}
+                    onClick={() => setLocation(`/anime/${result.id}`)}
+                    className="flex-shrink-0 flex items-center cursor-pointer group/card transition-all duration-300 hover:scale-105 hover:z-10"
                   >
-                    {index + 1}
-                  </span>
+                    {/* Rank Number - Netflix style outline */}
+                    <span
+                      className="text-[200px] select-none leading-none"
+                      style={{
+                        WebkitTextStroke: '4px rgba(124, 58, 237, 0.5)',
+                        color: 'transparent',
+                        fontFamily: "'Special Gothic Expanded One', sans-serif",
+                      }}
+                    >
+                      {index + 1}
+                    </span>
 
-                  {/* Anime Cover - overlaps number */}
-                  <div className="relative w-32 h-48 rounded-lg overflow-hidden bg-gray-900 group-hover/card:border-purple-500/50 transition-all duration-300 -ml-8 z-[1] shadow-2xl group-hover/card:shadow-[0_0_30px_rgba(124,58,237,0.4)]">
-                    {/* Gradient glow towards number */}
-                    <div className="absolute inset-y-0 -left-6 w-6 bg-gradient-to-r from-black/50 to-transparent z-[2]" />
-                    {result.thumbnail ? (
-                      <img
-                        src={result.thumbnail}
-                        alt={result.title}
-                        className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                        <span className="text-gray-500 text-xs">Sem imagem</span>
-                      </div>
-                    )}
+                    {/* Anime Cover - overlaps number */}
+                    <div className="relative w-32 h-48 rounded-lg overflow-hidden bg-gray-900 group-hover/card:border-purple-500/50 transition-all duration-300 -ml-8 z-[1] shadow-2xl group-hover/card:shadow-[0_0_30px_rgba(124,58,237,0.4)]">
+                      {/* Gradient glow towards number */}
+                      <div className="absolute inset-y-0 -left-6 w-6 bg-gradient-to-r from-black/50 to-transparent z-[2]" />
+                      {result.thumbnail ? (
+                        <img
+                          src={result.thumbnail}
+                          alt={result.title}
+                          className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                          <span className="text-gray-500 text-xs">Sem imagem</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </HorizontalScroll>
         </section>
 
         {/* 5. Romances */}
@@ -426,7 +426,7 @@ export default function Home() {
                 <AnimeCard
                   key={result.id}
                   result={result}
-                  isFavorite={favorites.has(result.id)}
+                  isFavorite={isSaved(result.id)}
                   onToggleFavorite={toggleFavorite}
                   onClick={() => setLocation(`/anime/${result.id}`)}
                 />
@@ -445,7 +445,7 @@ export default function Home() {
                 <AnimeCard
                   key={result.id}
                   result={result}
-                  isFavorite={favorites.has(result.id)}
+                  isFavorite={isSaved(result.id)}
                   onToggleFavorite={toggleFavorite}
                   onClick={() => setLocation(`/anime/${result.id}`)}
                 />
@@ -464,7 +464,7 @@ export default function Home() {
                 <AnimeCard
                   key={result.id}
                   result={result}
-                  isFavorite={favorites.has(result.id)}
+                  isFavorite={isSaved(result.id)}
                   onToggleFavorite={toggleFavorite}
                   onClick={() => setLocation(`/anime/${result.id}`)}
                 />

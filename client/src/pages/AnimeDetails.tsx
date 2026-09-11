@@ -7,6 +7,7 @@ import type { EpisodeStream } from '@/providers/types';
 import VideoPlayer from '@/components/VideoPlayer';
 import { Loader2, ArrowLeft, Play, Search, ChevronDown, Bookmark, Film, X, Star, Eye } from 'lucide-react';
 import LoadingAnimation from '@/components/LoadingAnimation';
+import { useAccount } from '@/contexts/AccountContext';
 import {
   isEpisodeCompleted,
   getEpisodeProgressPercent,
@@ -37,12 +38,7 @@ export default function AnimeDetails() {
   const [showTrailer, setShowTrailer] = useState(false);
   const [fallbackTrailer, setFallbackTrailer] = useState<{ videoId: string } | null>(null);
   const [loadingTrailer, setLoadingTrailer] = useState(false);
-  const [favorites, setFavorites] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('hiraku-favorites');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
-  });
+  const { toggleSavedAnime, isSaved } = useAccount();
 
   // Check for trailer availability
   const hasTrailer = anime?.trailer?.site === 'youtube';
@@ -65,13 +61,7 @@ export default function AnimeDetails() {
   };
 
   const toggleFavorite = (id: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      localStorage.setItem('hiraku-favorites', JSON.stringify([...next]));
-      return next;
-    });
+    toggleSavedAnime(id);
   };
 
   const searchTrailer = async () => {
@@ -105,6 +95,31 @@ export default function AnimeDetails() {
     setSelectedSeason(undefined);
     setSelectedEpisode(null);
   }, [providerSlug]);
+
+  // Auto-play episode from history (URL query params ?episode=xxx&season=N)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const targetEpisodeId = params.get('episode');
+    const targetSeason = params.get('season');
+    if (!targetEpisodeId) return;
+
+    // Set season if provided and not already selected
+    if (targetSeason) {
+      const seasonNum = parseInt(targetSeason, 10);
+      if (!isNaN(seasonNum) && selectedSeason !== seasonNum) {
+        setSelectedSeason(seasonNum);
+        return;
+      }
+    }
+
+    if (!episodes.length || loadingEpisodes) return;
+
+    const episode = episodes.find(ep => ep.id === targetEpisodeId);
+    if (episode && !playerStream && !loadingPlayer) {
+      handleEpisodeClick(episode.id, episode.number);
+      window.history.replaceState({}, '', `/anime/${animeId}`);
+    }
+  }, [episodes, loadingEpisodes, selectedSeason]);
 
   const handleEpisodeClick = async (episodeId: string, episodeNumber: string) => {
     setSelectedEpisode(episodeNumber);
@@ -232,12 +247,12 @@ export default function AnimeDetails() {
                 <button
                   onClick={() => toggleFavorite(String(animeId))}
                   className={`p-3 rounded-lg transition-all duration-300 hover:scale-110 active:scale-95 ${
-                    favorites.has(String(animeId))
+                    isSaved(String(animeId))
                       ? 'bg-purple-500/20 text-purple-400'
                       : 'text-gray-400 hover:bg-purple-500/20 hover:text-purple-400'
                   }`}
                 >
-                  <Bookmark size={18} className={favorites.has(String(animeId)) ? 'fill-current' : ''} />
+                  <Bookmark size={18} className={isSaved(String(animeId)) ? 'fill-current' : ''} />
                 </button>
               )}
 
@@ -564,6 +579,10 @@ export default function AnimeDetails() {
         <VideoPlayer
           stream={playerStream}
           animeId={String(animeId)}
+          animeTitle={anime?.title?.romaji || anime?.title?.english || ''}
+          animeCover={anime?.coverImage?.large || anime?.coverImage?.medium || ''}
+          animeGenres={anime?.genres}
+          animeYear={anime?.seasonYear}
           onClose={() => setPlayerStream(null)}
           onNextEpisode={playerStream.nextEpisode ? handleNextEpisode : undefined}
         />

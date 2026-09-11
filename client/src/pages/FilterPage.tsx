@@ -4,6 +4,7 @@ import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates } from '@/l
 import { batchCheckAvailability } from '@/providers';
 import { Loader2, Star, Play, AlertCircle, Bookmark } from 'lucide-react';
 import LoadingAnimation from '@/components/LoadingAnimation';
+import { useAccount } from '@/contexts/AccountContext';
 
 const YEARS = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i);
 const GENRES = [
@@ -28,28 +29,11 @@ export default function FilterPage({ format, title }: FilterPageProps) {
   const [genre, setGenre] = useState<string | undefined>(undefined);
   const [availableIds, setAvailableIds] = useState<Set<string>>(new Set());
 
-  // Favorites from localStorage
-  const [favorites, setFavorites] = useState<Set<string>>(() => {
-    const saved = localStorage.getItem('hiraku-favorites');
-    return saved ? new Set(JSON.parse(saved)) : new Set();
-  });
-
-  // Save favorites to localStorage
-  useEffect(() => {
-    localStorage.setItem('hiraku-favorites', JSON.stringify([...favorites]));
-  }, [favorites]);
+  const { toggleSavedAnime, isSaved } = useAccount();
 
   const toggleFavorite = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+    toggleSavedAnime(id);
   };
 
   // Search when filters change
@@ -193,12 +177,12 @@ export default function FilterPage({ format, title }: FilterPageProps) {
                     <button
                       onClick={(e) => toggleFavorite(result.id, e)}
                       className={`absolute top-2 right-2 p-2 rounded-lg transition-all duration-200 ${
-                        favorites.has(result.id)
+                        isSaved(result.id)
                           ? 'bg-purple-500/90 text-white'
                           : 'bg-black/50 text-gray-400 opacity-0 group-hover:opacity-100'
                       }`}
                     >
-                      <Bookmark size={16} className={favorites.has(result.id) ? 'fill-current' : ''} />
+                      <Bookmark size={16} className={isSaved(result.id) ? 'fill-current' : ''} />
                     </button>
                   </div>
 

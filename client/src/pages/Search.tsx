@@ -4,6 +4,7 @@ import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates, getTrendin
 import { batchCheckAvailability } from '@/providers';
 import { Loader2, Search as SearchIcon, Star, X, Play, AlertCircle, SlidersHorizontal, Bookmark } from 'lucide-react';
 import LoadingAnimation from '@/components/LoadingAnimation';
+import { useAccount } from '@/contexts/AccountContext';
 
 interface SearchFilters {
   season?: string;
@@ -40,32 +41,15 @@ export default function Search() {
   const [availableIds, setAvailableIds] = useState<Set<string>>(new Set());
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
-  // Favorites from localStorage
-  const [favorites, setFavorites] = useState<Set<string>>(() => {
-    const saved = localStorage.getItem('hiraku-favorites');
-    return saved ? new Set(JSON.parse(saved)) : new Set();
-  });
+  const { toggleSavedAnime, isSaved } = useAccount();
 
   // Default animes (mixed trending + popular)
   const [defaultAnimes, setDefaultAnimes] = useState<any[]>([]);
   const [defaultLoading, setDefaultLoading] = useState(true);
 
-  // Save favorites to localStorage
-  useEffect(() => {
-    localStorage.setItem('hiraku-favorites', JSON.stringify([...favorites]));
-  }, [favorites]);
-
   const toggleFavorite = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+    toggleSavedAnime(id);
   };
 
   // Parse URL params and search
@@ -368,7 +352,7 @@ export default function Search() {
                       result={result}
                       isAvailable={isAvailable}
                       showAvailability={results.length > 0}
-                      isFavorite={favorites.has(result.id)}
+                      isFavorite={isSaved(result.id)}
                       onToggleFavorite={toggleFavorite}
                       onClick={() => setLocation(`/anime/${result.id}`)}
                     />

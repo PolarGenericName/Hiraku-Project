@@ -3,6 +3,10 @@ import { createServer } from "http";
 
 const ANILIST_API = "https://graphql.anilist.co";
 
+// Request cache to avoid 429 rate limits
+const cache = new Map<string, { data: any; expires: number }>();
+const CACHE_TTL = 60_000; // 60 seconds
+
 const TRAILER_QUERY = `
   query ($id: Int) {
     Media(id: $id, type: ANIME) {
@@ -20,7 +24,12 @@ const TRAILER_QUERY = `
 async function fetchAniListTrailer(anilistId: number) {
   const response = await fetch(ANILIST_API, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Origin": "https://anilist.co",
+      "Referer": "https://anilist.co/",
+    },
     body: JSON.stringify({ query: TRAILER_QUERY, variables: { id: anilistId } }),
   });
 
@@ -48,7 +57,21 @@ async function startServer() {
 
   // AniList GraphQL proxy - avoids CORS and rate limit issues from browser
   app.post("/api/anilist", async (req, res) => {
-    console.log("[AniList] Received request, body keys:", Object.keys(req.body || {}));
+    const query = req.body?.query || "";
+    const variables = req.body?.variables || {};
+    const cacheKey = JSON.stringify({ q: query.trim(), v: variables });
+
+    console.log("[AniList] Request received, query snippet:", query.substring(0, 80));
+
+    // Check cache first
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() < cached.expires) {
+      console.log("[AniList] Cache HIT");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      return res.json(cached.data);
+    }
+
+    console.log("[AniList] Cache MISS, fetching from upstream...");
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
@@ -60,8 +83,8 @@ async function startServer() {
           "Content-Type": "application/json",
           "Accept": "application/json",
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          "Origin": "https://hiraku.app",
-          "Referer": "https://hiraku.app/",
+          "Origin": "https://anilist.co",
+          "Referer": "https://anilist.co/",
         },
         body: JSON.stringify(req.body),
       });
@@ -70,6 +93,16 @@ async function startServer() {
       console.log("[AniList] Upstream status:", response.status);
 
       const data = await response.json();
+
+      // Cache successful responses
+      if (response.ok) {
+        cache.set(cacheKey, { data, expires: Date.now() + CACHE_TTL });
+        if (cache.size > 500) {
+          const firstKey = cache.keys().next().value;
+          if (firstKey) cache.delete(firstKey);
+        }
+      }
+
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.json(data);
     } catch (error: any) {

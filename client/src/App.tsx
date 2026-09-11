@@ -7,22 +7,41 @@ import Search from "@/pages/Search";
 import AnimeDetails from "@/pages/AnimeDetails";
 import AnimesPage from "@/pages/AnimesPage";
 import FilmesPage from "@/pages/FilmesPage";
+import Profile from "@/pages/Profile";
+import AccountSetup from "@/pages/AccountSetup";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { AccountProvider, useAccount } from "./contexts/AccountContext";
 
-function Router() {
+const HomeLayout = () => <Layout><Home /></Layout>;
+const SearchLayout = () => <Layout><Search /></Layout>;
+const AnimesLayout = () => <Layout><AnimesPage /></Layout>;
+const FilmesLayout = () => <Layout><FilmesPage /></Layout>;
+const AnimeDetailsLayout = () => <Layout><AnimeDetails /></Layout>;
+const NotFoundLayout = () => <Layout><NotFound /></Layout>;
+
+function AppContent() {
+  const { isSetup } = useAccount();
+
   return (
-    <Switch>
-      <Route path={"/"} component={() => <Layout><Home /></Layout>} />
-      <Route path={"/search"} component={() => <Layout><Search /></Layout>} />
-      <Route path={"/animes"} component={() => <Layout><AnimesPage /></Layout>} />
-      <Route path={"/filmes"} component={() => <Layout><FilmesPage /></Layout>} />
-      <Route path={"/anime/:id"} component={() => <Layout><AnimeDetails /></Layout>} />
-      <Route path={"/404"} component={() => <Layout><NotFound /></Layout>} />
-      {/* Final fallback route */}
-      <Route component={() => <Layout><NotFound /></Layout>} />
-    </Switch>
+    <>
+      {!isSetup && (
+        <div className="fixed inset-0 z-[100]">
+          <AccountSetup />
+        </div>
+      )}
+      <Switch>
+        <Route path="/" component={HomeLayout} />
+        <Route path="/search" component={SearchLayout} />
+        <Route path="/animes" component={AnimesLayout} />
+        <Route path="/filmes" component={FilmesLayout} />
+        <Route path="/anime/:id" component={AnimeDetailsLayout} />
+        <Route path="/profile" component={() => <Profile />} />
+        <Route path="/404" component={NotFoundLayout} />
+        <Route component={NotFoundLayout} />
+      </Switch>
+    </>
   );
 }
 
@@ -30,10 +49,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <AccountProvider>
+          <TooltipProvider>
+            <Toaster />
+            <AppContent />
+          </TooltipProvider>
+        </AccountProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

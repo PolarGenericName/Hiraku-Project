@@ -188,7 +188,12 @@ export class AnimeFireProvider implements AnimeProvider {
       console.log('[AnimeFire] Episode stream:', episodeId);
       const json = await apiGet<any>(`/episode/${episodeId}`);
       const data = json.data;
-      if (!data) return null;
+      if (!data) {
+        console.error('[AnimeFire] No episode data for:', episodeId);
+        return null;
+      }
+
+      console.log('[AnimeFire] Raw streams:', JSON.stringify(data.streams?.map((s: any) => ({ audio: s.audio, url: s.url?.substring(0, 80), is_offline: s.is_offline }))));
 
       const streams = (data.streams || [])
         .filter((s: any) => s.url && !s.is_offline)
@@ -198,6 +203,8 @@ export class AnimeFireProvider implements AnimeProvider {
           qualities: Array.isArray(s.qualities) ? s.qualities.join(' ') : (s.qualities || ''),
           isMtl: s.is_mtl || false,
         }));
+
+      console.log('[AnimeFire] Filtered streams:', streams.length);
 
       return {
         episodeId: data.id,
