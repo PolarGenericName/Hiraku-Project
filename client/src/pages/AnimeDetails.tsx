@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useAnimeDetails, useSeasons, useEpisodes, useRecommendations } from '@/hooks/useAnime';
 import { getEpisodeStream } from '@/providers';
@@ -43,6 +43,53 @@ export default function AnimeDetails() {
   // Check for trailer availability
   const hasTrailer = anime?.trailer?.site === 'youtube';
   const trailerVideoId = hasTrailer ? anime.trailer.id : fallbackTrailer?.videoId;
+
+  // Drag-to-scroll for recommendations
+  const recScrollRef = useRef<HTMLDivElement>(null);
+  const recDragging = useRef(false);
+  const recStartX = useRef(0);
+  const recStartY = useRef(0);
+  const recScrollLeft = useRef(0);
+  const recWasDragged = useRef(false);
+
+  const handleRecMouseDown = (e: React.MouseEvent) => {
+    if (!recScrollRef.current) return;
+    recDragging.current = true;
+    recWasDragged.current = false;
+    recStartX.current = e.pageX;
+    recStartY.current = e.pageY;
+    recScrollLeft.current = recScrollRef.current.scrollLeft;
+    recScrollRef.current.style.cursor = 'grabbing';
+  };
+
+  const handleRecMouseMove = (e: React.MouseEvent) => {
+    if (!recDragging.current || !recScrollRef.current) return;
+    const dx = Math.abs(e.pageX - recStartX.current);
+    const dy = Math.abs(e.pageY - recStartY.current);
+    if (dx > 5 || dy > 5) {
+      recWasDragged.current = true;
+    }
+    e.preventDefault();
+    const x = e.pageX - recScrollRef.current.offsetLeft;
+    const walk = (x - recStartX.current) * 1.5;
+    recScrollRef.current.scrollLeft = recScrollLeft.current - walk;
+  };
+
+  const handleRecMouseUp = (e: React.MouseEvent) => {
+    if (!recScrollRef.current) return;
+    recDragging.current = false;
+    recScrollRef.current.style.cursor = 'grab';
+    if (recWasDragged.current) {
+      e.stopPropagation();
+    }
+  };
+
+  const handleRecScrollClick = (e: React.MouseEvent) => {
+    if (recWasDragged.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
 
   const handleRecClick = async (rec: { id: string; title: string }) => {
     setLoadingRec(rec.id);
@@ -460,7 +507,9 @@ export default function AnimeDetails() {
                       <img
                         src={ep.thumbnail}
                         alt={`Episódio ${ep.number}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        draggable={false}
+                        onDragStart={(e) => e.preventDefault()}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground">
@@ -521,7 +570,16 @@ export default function AnimeDetails() {
       {recommendations.length > 0 && (
         <div className="px-6 py-6">
           <h2 className="text-2xl font-bold mb-4">Animes Parecidos</h2>
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+          <div
+            ref={recScrollRef}
+            className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide"
+            style={{ cursor: 'grab' }}
+            onMouseDown={handleRecMouseDown}
+            onMouseMove={handleRecMouseMove}
+            onMouseUp={handleRecMouseUp}
+            onMouseLeave={handleRecMouseUp}
+            onClick={handleRecScrollClick}
+          >
             {recommendations.slice(0, 12).map((rec) => (
               <button
                 key={rec.id}
@@ -534,7 +592,9 @@ export default function AnimeDetails() {
                     <img
                       src={rec.thumbnail}
                       alt={rec.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      draggable={false}
+                      onDragStart={(e) => e.preventDefault()}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">

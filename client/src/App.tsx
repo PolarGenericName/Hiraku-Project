@@ -19,6 +19,7 @@ const SearchLayout = () => <Layout><Search /></Layout>;
 const AnimesLayout = () => <Layout><AnimesPage /></Layout>;
 const FilmesLayout = () => <Layout><FilmesPage /></Layout>;
 const AnimeDetailsLayout = () => <Layout><AnimeDetails /></Layout>;
+const ProfileLayout = () => <Layout><Profile /></Layout>;
 const NotFoundLayout = () => <Layout><NotFound /></Layout>;
 
 function AppContent() {
@@ -37,7 +38,7 @@ function AppContent() {
         <Route path="/animes" component={AnimesLayout} />
         <Route path="/filmes" component={FilmesLayout} />
         <Route path="/anime/:id" component={AnimeDetailsLayout} />
-        <Route path="/profile" component={() => <Profile />} />
+        <Route path="/profile" component={ProfileLayout} />
         <Route path="/404" component={NotFoundLayout} />
         <Route component={NotFoundLayout} />
       </Switch>

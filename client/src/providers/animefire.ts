@@ -11,7 +11,6 @@ import type {
   Episode,
   Recommendation,
   EpisodeStream,
-  StreamUrl,
 } from './types';
 
 const API_BASE = 'https://api.animefire.io';
@@ -23,19 +22,6 @@ async function apiGet<T>(path: string): Promise<T> {
   const response = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT) });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
-}
-
-/**
- * Get just the original JP title from AnimeFire detail page.
- * Lightweight - only extracts the title field.
- */
-export async function getAnimeOriginalTitle(id: string): Promise<string | null> {
-  try {
-    const json = await apiGet<any>(`/anime/${id}`);
-    return json.data?.hero?.titles?.JP || null;
-  } catch {
-    return null;
-  }
 }
 
 export class AnimeFireProvider implements AnimeProvider {
@@ -224,9 +210,5 @@ export class AnimeFireProvider implements AnimeProvider {
       console.error('[AnimeFire] Episode stream error:', error);
       return null;
     }
-  }
-
-  async getStreamUrl(id: string, episodeNumber: string): Promise<StreamUrl | null> {
-    return null;
   }
 }

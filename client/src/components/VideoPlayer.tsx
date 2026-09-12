@@ -157,10 +157,11 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
       const genreText = animeGenres && animeGenres.length > 0 ? animeGenres.slice(0, 2).join(' • ') : '';
       const yearText = animeYear ? String(animeYear) : '';
       const metaText = [genreText, yearText].filter(Boolean).join(' • ');
-      const titleLine = `${animeTitle || stream.title || ''} (T${stream.season} E${stream.number})`;
+      const episodeLabel = `T${stream.season} E${stream.number}`;
+      const episodeName = stream.title ? ` — ${stream.title}` : '';
       const payload: any = {
-        details: titleLine,
-        state: stream.title,
+        details: animeTitle || stream.title || '',
+        state: `${episodeLabel}${episodeName}`,
         largeImageKey: animeCover || 'hiraku',
         largeImageText: metaText || 'Hiraku',
         smallImageKey: 'hiraku',
@@ -417,7 +418,7 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+      className="fixed inset-0 z-[300] bg-black flex items-center justify-center"
       onMouseMove={resetHideTimer}
     >
       <video

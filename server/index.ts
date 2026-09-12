@@ -178,11 +178,22 @@ async function startServer() {
     }
   });
 
-  // CORS proxy - forwards any URL
+  // CORS proxy - forwards requests to allowed domains only
+  const ALLOWED_PROXY_HOSTS = ["api.animefire.io"];
   app.get("/api/proxy", async (req, res) => {
     const targetUrl = req.query.url as string;
     if (!targetUrl) {
       return res.status(400).json({ error: "Missing url parameter" });
+    }
+
+    // Validate URL belongs to an allowed host
+    try {
+      const parsedUrl = new URL(targetUrl);
+      if (!ALLOWED_PROXY_HOSTS.includes(parsedUrl.hostname)) {
+        return res.status(403).json({ error: "Host not allowed" });
+      }
+    } catch {
+      return res.status(400).json({ error: "Invalid URL" });
     }
 
     console.log("[Proxy] Fetching:", targetUrl.substring(0, 150));

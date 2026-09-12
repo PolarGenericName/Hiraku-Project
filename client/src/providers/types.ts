@@ -84,13 +84,6 @@ export interface EpisodeStream {
   };
 }
 
-export interface StreamUrl {
-  url: string;
-  quality: string;
-  provider: string;
-  referer?: string;
-}
-
 export interface AnimeProvider {
   id: string;
   name: string;
@@ -102,5 +95,4 @@ export interface AnimeProvider {
   getEpisodes(id: string, seasonNumber?: number): Promise<Episode[]>;
   getRecommendations(id: string): Promise<Recommendation[]>;
   getEpisodeStream(episodeId: string): Promise<EpisodeStream | null>;
-  getStreamUrl(id: string, episodeNumber: string): Promise<StreamUrl | null>;
 }

@@ -158,7 +158,9 @@ export default function Home() {
                 <img
                   src={anime.bannerImage}
                   alt=""
-                  className={`w-full h-full object-cover transition-transform duration-[8000ms] ease-out ${
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
+                  className={`w-full h-full object-cover transition-transform duration-[8000ms] ease-out pointer-events-none ${
                     idx === heroIndex ? 'scale-105' : 'scale-100'
                   }`}
                 />
@@ -166,7 +168,9 @@ export default function Home() {
                 <img
                   src={anime.coverImage.extraLarge}
                   alt=""
-                  className={`w-full h-full object-cover opacity-30 transition-transform duration-[8000ms] ease-out ${
+                  draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
+                  className={`w-full h-full object-cover opacity-30 transition-transform duration-[8000ms] ease-out pointer-events-none ${
                     idx === heroIndex ? 'scale-105' : 'scale-100'
                   }`}
                 />
@@ -307,7 +311,9 @@ export default function Home() {
                     <img
                       src={item.animeCover}
                       alt={item.animeTitle}
-                      className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500"
+                      draggable={false}
+                      onDragStart={(e) => e.preventDefault()}
+                      className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500 pointer-events-none"
                     />
                     {/* Progress bar */}
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
@@ -371,49 +377,58 @@ export default function Home() {
         {/* 4. Top 10 */}
         <section>
           <h2 className="text-2xl font-bold text-white mb-4 px-8 md:px-16">Top 10</h2>
-          <HorizontalScroll>
-            <div className="flex gap-2 pt-4">
+          <Top10Scroll>
+            <div className="flex gap-3">
               {[...heroAnimes, ...popular].slice(0, 10).map((anime, index) => {
                 const result = anilistToAnimeResult(anime);
                 return (
                   <div
                     key={result.id}
                     onClick={() => setLocation(`/anime/${result.id}`)}
-                    className="flex-shrink-0 flex items-center cursor-pointer group/card transition-all duration-300 hover:scale-105 hover:z-10"
+                    className="flex-shrink-0 w-48 cursor-pointer group/card transition-all duration-300 hover:scale-105 hover:z-10"
                   >
-                    {/* Rank Number - Netflix style outline */}
-                    <span
-                      className="text-[200px] select-none leading-none"
-                      style={{
-                        WebkitTextStroke: '4px rgba(124, 58, 237, 0.5)',
-                        color: 'transparent',
-                        fontFamily: "'Special Gothic Expanded One', sans-serif",
-                      }}
-                    >
-                      {index + 1}
-                    </span>
-
-                    {/* Anime Cover - overlaps number */}
-                    <div className="relative w-32 h-48 rounded-lg overflow-hidden bg-gray-900 group-hover/card:border-purple-500/50 transition-all duration-300 -ml-8 z-[1] shadow-2xl group-hover/card:shadow-[0_0_30px_rgba(124,58,237,0.4)]">
-                      {/* Gradient glow towards number */}
-                      <div className="absolute inset-y-0 -left-6 w-6 bg-gradient-to-r from-black/50 to-transparent z-[2]" />
+                    {/* Card with number inside */}
+                    <div className="relative aspect-[9/13] rounded-xl overflow-hidden mb-2 bg-gray-900 group-hover/card:border-purple-500/50 transition-all duration-300 group-hover/card:shadow-[0_0_30px_rgba(124,58,237,0.4)]">
                       {result.thumbnail ? (
                         <img
                           src={result.thumbnail}
                           alt={result.title}
-                          className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500"
+                          draggable={false}
+                          onDragStart={(e) => e.preventDefault()}
+                          className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500 pointer-events-none"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gray-800">
                           <span className="text-gray-500 text-xs">Sem imagem</span>
                         </div>
                       )}
+
+                      {/* Rank Number - inside card, bottom-right */}
+                      <div className="absolute bottom-0 right-0 flex items-end">
+                        <span
+                          className="text-7xl font-black select-none leading-none"
+                          style={{
+                            background: 'linear-gradient(180deg, #a855f7 0%, #7c3aed 50%, #6d28d9 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            fontFamily: "'Special Gothic Expanded One', sans-serif",
+                            filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8))',
+                          }}
+                        >
+                          {index + 1}
+                        </span>
+                      </div>
                     </div>
+
+                    {/* Title below card */}
+                    <h3 className="text-sm font-medium text-gray-300 line-clamp-2 group-hover/card:text-purple-400 transition-colors leading-tight">
+                      {result.title}
+                    </h3>
                   </div>
                 );
               })}
             </div>
-          </HorizontalScroll>
+          </Top10Scroll>
         </section>
 
         {/* 5. Romances */}
@@ -481,8 +496,76 @@ export default function Home() {
 // COMPONENTS
 // ============================================================================
 
+function Top10Scroll({ children }: { children: React.ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const scrollLeftVal = useRef(0);
+  const wasDragged = useRef(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    isDragging.current = true;
+    wasDragged.current = false;
+    startX.current = e.pageX;
+    startY.current = e.pageY;
+    scrollLeftVal.current = scrollRef.current.scrollLeft;
+    scrollRef.current.style.cursor = 'grabbing';
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    const dx = Math.abs(e.pageX - startX.current);
+    const dy = Math.abs(e.pageY - startY.current);
+    if (dx > 5 || dy > 5) {
+      wasDragged.current = true;
+    }
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX.current) * 1.5;
+    scrollRef.current.scrollLeft = scrollLeftVal.current - walk;
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    isDragging.current = false;
+    scrollRef.current.style.cursor = 'grab';
+    if (wasDragged.current) {
+      e.stopPropagation();
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (wasDragged.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
+
+  return (
+    <div
+      ref={scrollRef}
+      className="overflow-x-auto scrollbar-hide px-8 md:px-16 pb-2 pt-4"
+      style={{ cursor: 'grab' }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onClick={handleClick}
+    >
+      {children}
+    </div>
+  );
+}
+
 function HorizontalScroll({ children }: { children: React.ReactNode }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const scrollLeftVal = useRef(0);
+  const wasDragged = useRef(false);
 
   const scroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return;
@@ -491,13 +574,51 @@ function HorizontalScroll({ children }: { children: React.ReactNode }) {
     const maxScroll = el.scrollWidth - el.clientWidth;
 
     if (direction === 'right' && el.scrollLeft + amount >= maxScroll - 10) {
-      // Reached near the end, scroll back to start
       el.scrollTo({ left: 0, behavior: 'smooth' });
     } else {
       el.scrollBy({
         left: direction === 'left' ? -amount : amount,
         behavior: 'smooth',
       });
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    isDragging.current = true;
+    wasDragged.current = false;
+    startX.current = e.pageX;
+    startY.current = e.pageY;
+    scrollLeftVal.current = scrollRef.current.scrollLeft;
+    scrollRef.current.style.cursor = 'grabbing';
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    const dx = Math.abs(e.pageX - startX.current);
+    const dy = Math.abs(e.pageY - startY.current);
+    if (dx > 5 || dy > 5) {
+      wasDragged.current = true;
+    }
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX.current) * 1.5;
+    scrollRef.current.scrollLeft = scrollLeftVal.current - walk;
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    isDragging.current = false;
+    scrollRef.current.style.cursor = 'grab';
+    if (wasDragged.current) {
+      e.stopPropagation();
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (wasDragged.current) {
+      e.stopPropagation();
+      e.preventDefault();
     }
   };
 
@@ -513,6 +634,12 @@ function HorizontalScroll({ children }: { children: React.ReactNode }) {
       <div
         ref={scrollRef}
         className="flex gap-3 overflow-x-auto scrollbar-hide px-8 md:px-16 pb-2 pt-4"
+        style={{ cursor: 'grab' }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onClick={handleClick}
       >
         {children}
       </div>
@@ -548,7 +675,9 @@ function AnimeCard({
           <img
             src={result.thumbnail}
             alt={result.title}
-            className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500"
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+            className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500 pointer-events-none"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-800">

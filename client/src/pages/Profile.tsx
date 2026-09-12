@@ -13,13 +13,15 @@ function HistoryCard({ item, onClick }: { item: EpisodeHistoryItem; onClick: () 
   return (
     <div
       onClick={onClick}
-      className="flex-shrink-0 w-64 cursor-pointer group/card transition-all duration-200 hover:scale-[1.03]"
+      className="flex-shrink-0 w-96 cursor-pointer group/card transition-all duration-200 hover:scale-[1.03]"
     >
       <div className="relative rounded-lg overflow-hidden bg-gray-900 aspect-video">
         <img
           src={item.animeCover}
           alt={item.animeTitle}
-          className="w-full h-full object-cover"
+          draggable={false}
+          onDragStart={(e) => e.preventDefault()}
+          className="w-full h-full object-cover pointer-events-none"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
@@ -53,8 +55,8 @@ function SavedAnimeCard({ anilistId, onClick }: { anilistId: string; onClick: ()
 
   if (loading || !anime) {
     return (
-      <div className="flex-shrink-0 w-32">
-        <div className="w-32 h-44 rounded-lg bg-gray-900 animate-pulse" />
+      <div className="flex-shrink-0 w-56">
+        <div className="w-56 h-80 rounded-lg bg-gray-900 animate-pulse" />
       </div>
     );
   }
@@ -62,13 +64,15 @@ function SavedAnimeCard({ anilistId, onClick }: { anilistId: string; onClick: ()
   return (
     <div
       onClick={onClick}
-      className="flex-shrink-0 w-32 cursor-pointer group/card transition-all duration-200 hover:scale-[1.03]"
+      className="flex-shrink-0 w-56 cursor-pointer group/card transition-all duration-200 hover:scale-[1.03]"
     >
-      <div className="relative w-32 h-44 rounded-lg overflow-hidden bg-gray-900">
+      <div className="relative w-56 h-80 rounded-lg overflow-hidden bg-gray-900">
         <img
           src={anime.coverImage?.large || anime.coverImage?.medium || ''}
           alt={anime.title?.romaji || ''}
-          className="w-full h-full object-cover"
+          draggable={false}
+          onDragStart={(e) => e.preventDefault()}
+          className="w-full h-full object-cover pointer-events-none"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity" />
       </div>

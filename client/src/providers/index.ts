@@ -78,7 +78,7 @@ export async function findAnimeSlug(
   nativeTitle?: string
 ): Promise<string | null> {
   // Skip search for anime not yet released
-  if (anilistStatus === 'NOT_YET_RELEASED' || anilistStatus === 'NOT_YET_RELEASED_OR_FINISHED') {
+  if (anilistStatus === 'NOT_YET_RELEASED') {
     console.log('[FindSlug] Skipping unreleased anime:', romajiTitle);
     return null;
   }
@@ -113,9 +113,14 @@ export async function findAnimeSlug(
   const wordMatchIds = new Set<string>();
   const wordMatches: { id: string; title: string }[] = [];
 
+  // Store per-title results for fallback (avoids re-searching)
+  const titleResultsMap = new Map<string, { id: string; title: string; year?: number }[]>();
+
   for (const title of titles) {
     const results = await searchAnime(title);
     console.log(`[FindSlug] "${title}" => ${results.length} results`);
+
+    titleResultsMap.set(title, results);
 
     if (results.length === 0) continue;
 
@@ -146,7 +151,6 @@ export async function findAnimeSlug(
     for (const r of results) {
       if (resultHasYearConflict(searchYear, r)) continue;
       const normalizedResult = normalizeTitle(r.title);
-      const resultWords = normalizedResult.split(' ');
       // Require ALL search words to match AND at least 60% of result words to match
       const allWordsMatch = searchWords.every(w => normalizedResult.includes(w));
       const matchRatio = searchWords.filter(w => normalizedResult.includes(w)).length / Math.max(searchWords.length, 1);
@@ -169,15 +173,14 @@ export async function findAnimeSlug(
     return wordMatches[0].id;
   }
 
-  // Fallback: if a search returned exactly 1 result and it contains the main keyword, use it
+  // Fallback: if a title search returned exactly 1 result and it contains the main keyword, use it
   for (const title of titles) {
-    const results = await searchAnime(title);
-    if (results.length === 1) {
-      const r = results[0];
+    const cachedResults = titleResultsMap.get(title);
+    if (cachedResults && cachedResults.length === 1) {
+      const r = cachedResults[0];
       if (!resultHasYearConflict(searchYear, r)) {
         const normalizedResult = normalizeTitle(r.title);
         const searchWords = normalizeTitle(title).split(' ').filter(w => w.length > 2);
-        // Check if at least one significant word from search appears in result
         const hasKeyword = searchWords.some(w => normalizedResult.includes(w));
         if (hasKeyword) {
           console.log('[FindSlug] SINGLE RESULT match:', r.title, '->', r.id);
@@ -340,15 +343,16 @@ export async function batchCheckAvailability(
           try {
             const episodes = await getEpisodes(slug);
             if (episodes.length > 0) {
-              // Verify episode count: allow up to 2x difference (combined seasons, etc.)
+              // Verify episode count
               const anilistEps = anime.episodes;
               if (anilistEps && episodes.length > 0) {
                 const ratio = episodes.length / anilistEps;
-                // Accept if AnimeFire has >= AniList eps (combined seasons) or close match
-                if (ratio >= 0.5 && ratio <= 3) {
+                // Accept if ratio is within reasonable bounds
+                // Higher limit (15x) to handle AnimeFire combining seasons that AniList lists separately
+                if (ratio >= 0.5 && ratio <= 15) {
                   available.add(anime.id);
                 } else {
-                  console.log(`[BatchCheck] ${anime.title}: eps mismatch AniList:${anilistEps} vs AnimeFire:${episodes.length}`);
+                  console.log(`[BatchCheck] ${anime.title}: eps mismatch AniList:${anilistEps} vs AnimeFire:${episodes.length} ratio:${ratio.toFixed(1)}`);
                 }
               } else {
                 available.add(anime.id);

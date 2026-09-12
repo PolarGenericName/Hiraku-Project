@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates, getTrendingAnime, getPopularAnime, getUpcomingAnime, getSeasonalAnime } from '@/lib/anilist';
 import { batchCheckAvailability } from '@/providers';
-import { Loader2, Search as SearchIcon, Star, X, Play, AlertCircle, SlidersHorizontal, Bookmark } from 'lucide-react';
+import { Loader2, Search as SearchIcon, X, SlidersHorizontal, Bookmark } from 'lucide-react';
 import LoadingAnimation from '@/components/LoadingAnimation';
 import { useAccount } from '@/contexts/AccountContext';
 
@@ -12,7 +12,6 @@ interface SearchFilters {
   status?: string;
   format?: string;
   genre?: string;
-  availableOnly?: boolean;
 }
 
 const SEASONS = ['VERÃO', 'OUTONO', 'INVERNO', 'PRIMAVERA'];
@@ -40,6 +39,7 @@ export default function Search() {
   const [showFilters, setShowFilters] = useState(false);
   const [availableIds, setAvailableIds] = useState<Set<string>>(new Set());
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const { toggleSavedAnime, isSaved } = useAccount();
 
@@ -131,16 +131,17 @@ export default function Search() {
     const search = async () => {
       if (!query.trim() && !Object.values(filters).some(Boolean)) {
         setResults([]);
+        setHasSearched(false);
         return;
       }
 
       try {
         setLoading(true);
+        setHasSearched(true);
         const data = await searchAniList(query.trim() || undefined, filters);
         const filtered = filterSeasonDuplicates(data);
-        setResults(filtered);
 
-        // Check availability on AnimeFire
+        // Check availability on AnimeFire before showing results
         if (filtered.length > 0) {
           setCheckingAvailability(true);
           try {
@@ -162,12 +163,18 @@ export default function Search() {
                 available.has(anime.id.toString())
               );
               setResults(availableAnime);
+            } else {
+              // No available anime - show all results (user can still browse)
+              setResults(filtered);
             }
           } catch (err) {
             console.error('Availability check error:', err);
+            setResults(filtered);
           } finally {
             setCheckingAvailability(false);
           }
+        } else {
+          setResults(filtered);
         }
       } catch (err) {
         console.error('Search error:', err);
@@ -199,7 +206,7 @@ export default function Search() {
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
 
-  const displayAnimes = results.length > 0 ? results : defaultAnimes;
+  const displayAnimes = hasSearched ? results : defaultAnimes;
 
   return (
     <div className="min-h-screen bg-black">
@@ -337,12 +344,6 @@ export default function Search() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {displayAnimes
-                .filter((anime) => {
-                  if (results.length > 0 && filters.availableOnly && !availableIds.has(anime.id.toString())) {
-                    return false;
-                  }
-                  return true;
-                })
                 .map((anime) => {
                   const result = anilistToAnimeResult(anime);
                   const isAvailable = availableIds.has(anime.id.toString());
@@ -432,7 +433,9 @@ function AnimeCard({
           <img
             src={result.thumbnail}
             alt={result.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-800">

@@ -165,7 +165,9 @@ export default function FilterPage({ format, title }: FilterPageProps) {
                       <img
                         src={result.thumbnail}
                         alt={result.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        draggable={false}
+                        onDragStart={(e) => e.preventDefault()}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-800">
