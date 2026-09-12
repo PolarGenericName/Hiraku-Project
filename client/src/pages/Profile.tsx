@@ -50,13 +50,76 @@ function HistoryCard({ item, onClick }: { item: EpisodeHistoryItem; onClick: () 
   );
 }
 
+function HistoryScroll({ children }: { children: React.ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const scrollLeftVal = useRef(0);
+  const wasDragged = useRef(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    isDragging.current = true;
+    wasDragged.current = false;
+    startX.current = e.pageX;
+    startY.current = e.pageY;
+    scrollLeftVal.current = scrollRef.current.scrollLeft;
+    scrollRef.current.style.cursor = 'grabbing';
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    const dx = Math.abs(e.pageX - startX.current);
+    const dy = Math.abs(e.pageY - startY.current);
+    if (dx > 5 || dy > 5) {
+      wasDragged.current = true;
+    }
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX.current) * 1.5;
+    scrollRef.current.scrollLeft = scrollLeftVal.current - walk;
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    isDragging.current = false;
+    scrollRef.current.style.cursor = 'grab';
+    if (wasDragged.current) {
+      e.stopPropagation();
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (wasDragged.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
+
+  return (
+    <div
+      ref={scrollRef}
+      className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide"
+      style={{ cursor: 'grab' }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onClick={handleClick}
+    >
+      {children}
+    </div>
+  );
+}
+
 function SavedAnimeCard({ anilistId, onClick }: { anilistId: string; onClick: () => void }) {
   const { anime, loading } = useAnimeDetails(Number(anilistId));
 
   if (loading || !anime) {
     return (
-      <div className="flex-shrink-0 w-56">
-        <div className="w-56 h-80 rounded-lg bg-gray-900 animate-pulse" />
+      <div>
+        <div className="w-full aspect-[9/13] rounded-lg bg-gray-900 animate-pulse" />
       </div>
     );
   }
@@ -64,9 +127,9 @@ function SavedAnimeCard({ anilistId, onClick }: { anilistId: string; onClick: ()
   return (
     <div
       onClick={onClick}
-      className="flex-shrink-0 w-56 cursor-pointer group/card transition-all duration-200 hover:scale-[1.03]"
+      className="cursor-pointer group/card transition-all duration-200 hover:scale-[1.03]"
     >
-      <div className="relative w-56 h-80 rounded-lg overflow-hidden bg-gray-900">
+      <div className="relative w-full aspect-[9/13] rounded-lg overflow-hidden bg-gray-900">
         <img
           src={anime.coverImage?.large || anime.coverImage?.medium || ''}
           alt={anime.title?.romaji || ''}
@@ -248,15 +311,17 @@ export default function Profile() {
               <p>Nenhum episódio assistido ainda</p>
             </div>
           ) : (
-            <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
-              {history.map((item, i) => (
-                <HistoryCard
-                  key={`${item.animeId}-${item.episodeId}-${i}`}
-                  item={item}
-                  onClick={() => setLocation(`/anime/${item.animeId}?episode=${item.episodeId}&season=${item.season}`)}
-                />
-              ))}
-            </div>
+            <HistoryScroll>
+              <div className="flex gap-4">
+                {history.map((item, i) => (
+                  <HistoryCard
+                    key={`${item.animeId}-${item.episodeId}-${i}`}
+                    item={item}
+                    onClick={() => setLocation(`/anime/${item.animeId}?episode=${item.episodeId}&season=${item.season}`)}
+                  />
+                ))}
+              </div>
+            </HistoryScroll>
           )}
         </section>
 
@@ -273,8 +338,8 @@ export default function Profile() {
               <p>Nenhum anime salvo</p>
             </div>
           ) : (
-            <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
-              {savedAnimes.map((id) => (
+            <div className="grid grid-cols-5 gap-4">
+              {[...savedAnimes].reverse().map((id) => (
                 <SavedAnimeCard
                   key={id}
                   anilistId={id}
