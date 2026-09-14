@@ -21,14 +21,6 @@
 
 </div>
 
-## Printscreens Adicionais
-
-<div align="center">
-
-![Detalhes](docs/screenshots/details.png)
-![Busca](docs/screenshots/search.png)
-
-</div>
 
 ---
 
@@ -162,6 +154,14 @@ hiraku/
 <div align="center">
 
 > Em breve
+
+</div>
+## Printscreens Adicionais
+
+<div align="center">
+
+![Detalhes](docs/screenshots/details.png)
+![Busca](docs/screenshots/search.png)
 
 </div>
 
