@@ -20,10 +20,8 @@ extraResources:
 win:
   target:
     - target: nsis
-      arch:
-        - arm64
   icon: assets/icons/icon.ico
-  artifactName: "Hiraku-Setup-${version}-arm64.exe"
+  artifactName: "Hiraku-Setup-${version}-${arch}.exe"
 
 nsis:
   oneClick: false
