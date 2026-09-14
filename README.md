@@ -42,7 +42,7 @@ O **Hiraku** é um aplicativo de desktop para assistir animes em português bras
 - **Discord Rich Presence** — mostra o que você está assistindo no Discord
 - **Atalhos de teclado** — controle total sem usar o mouse
 
-## Download
+## Instalação
 
 Escolha a versão para o seu sistema operacional:
 
