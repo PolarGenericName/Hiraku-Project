@@ -93,14 +93,14 @@ pnpm start
 
 </div>
 
-    ---
+---
 
 <div align="center">
 
 ![Detalhes](docs/screenshots/details.png)
 ![Busca](docs/screenshots/search.png)
 
-    ---
+---
 
 </div>
 
