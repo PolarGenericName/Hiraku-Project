@@ -16,7 +16,7 @@
 
 ---
 
-O **Hiraku** é um aplicativo de desktop para assistir animes em português brasileiro. Ele reúne catálogo, informações e trailers do AniList com streaming direto, tudo em uma interface moderna e rápida.
+O **Hiraku** é um aplicativo de desktop para assistir animes. Ele reúne catálogo, informações e trailers com streaming direto, tudo em uma interface moderna e rápida.
 
 ## Índice
 
