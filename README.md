@@ -4,7 +4,7 @@
 
 # Hiraku
 
-**Aplicativo de streaming de anime em português brasileiro**
+**Open Hiraku Project**
 
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript)](https://www.typescriptlang.org)
@@ -144,14 +144,6 @@ hiraku/
 | `↑` / `↓` | Aumentar / Diminuir volume |
 | `Esc` | Fechar player |
 
-## Segurança
-
-- Proxy server com rate limiting (200 req/min)
-- CORS restrito a origens permitidas
-- Validação de queries GraphQL (bloqueio de introspection)
-- Tamanho máximo de resposta configurado
-- Electron com `nodeIntegration: false` e `contextIsolation: true`
-- Restrição de navegação e bloqueio de popups
 
 ## Contribuindo
 
@@ -163,11 +155,11 @@ hiraku/
 
 ## Créditos
 
-- **[AniList](https://anilist.co/)** — Catálogo e metadados de animes
-- **[AnimeFire](https://animefire.plus/)** — Provider de streaming PT-BR
-- **[hls.js](https://github.com/video-dev/hls.js/)** — Player HLS adaptativo
-- **[Electron](https://www.electronjs.org/)** — Framework desktop
-- **[shadcn/ui](https://ui.shadcn.com/)** — Componentes UI
+- **[AniList](https://anilist.co/)**
+- **[AnimeFire](https://animefire.plus/)** 
+- **[hls.js](https://github.com/video-dev/hls.js/)**
+- **[Electron](https://www.electronjs.org/)**
+- **[shadcn/ui](https://ui.shadcn.com/)**
 
 ## Licença
 
