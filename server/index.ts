@@ -242,6 +242,109 @@ async function startServer() {
     }
   });
 
+  // ── Stream proxy (akumast.net) ───────────────────────────────────────
+  app.use("/stream", async (req, res) => {
+    const targetUrl = `https://akumast.net${req.url}`;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+
+      const response = await fetch(targetUrl, {
+        signal: controller.signal,
+        method: req.method,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "Accept": "*/*",
+          "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+          "Origin": "https://animefire.io",
+          "Referer": "https://animefire.io/",
+        },
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: `Upstream returned ${response.status}` });
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      res.setHeader("Content-Type", contentType || "application/octet-stream");
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        return res.status(500).json({ error: "No response body" });
+      }
+
+      const chunks: Buffer[] = [];
+      let totalSize = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalSize += value.length;
+        if (totalSize > MAX_PROXY_RESPONSE_SIZE) {
+          reader.cancel();
+          return res.status(413).json({ error: "Response too large" });
+        }
+        chunks.push(Buffer.from(value));
+      }
+
+      res.send(Buffer.concat(chunks));
+    } catch {
+      res.status(500).json({ error: "Stream proxy error" });
+    }
+  });
+
+  // ── Image proxy (akumast.net /i/) ────────────────────────────────────────
+  app.use("/i", async (req, res) => {
+    const targetUrl = `https://akumast.net/i${req.url}`;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(targetUrl, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+          "Referer": "https://animefire.io/",
+        },
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: `Upstream returned ${response.status}` });
+      }
+
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      res.setHeader("Content-Type", contentType);
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        return res.status(500).json({ error: "No response body" });
+      }
+
+      const chunks: Buffer[] = [];
+      let totalSize = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalSize += value.length;
+        if (totalSize > MAX_PROXY_RESPONSE_SIZE) {
+          reader.cancel();
+          return res.status(413).json({ error: "Response too large" });
+        }
+        chunks.push(Buffer.from(value));
+      }
+
+      res.send(Buffer.concat(chunks));
+    } catch {
+      res.status(500).json({ error: "Image proxy error" });
+    }
+  });
+
   // ── CORS proxy ────────────────────────────────────────────────────────
   const ALLOWED_PROXY_HOSTS = ["api.animefire.io"];
   app.get("/api/proxy", async (req, res) => {
@@ -352,7 +455,7 @@ async function startServer() {
   const indexPath = path.join(__dirname, "public", "index.html");
   if (fs.existsSync(indexPath)) {
     app.get("*", (req, res) => {
-      if (req.path.startsWith("/api")) {
+      if (req.path.startsWith("/api") || req.path.startsWith("/stream") || req.path.startsWith("/i")) {
         return res.status(404).json({ error: "Not found" });
       }
       res.sendFile(indexPath);
