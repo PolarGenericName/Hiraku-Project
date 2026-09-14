@@ -91,15 +91,6 @@ pnpm start
 | `↑` / `↓` | Aumentar / Diminuir volume |
 | `Esc` | Fechar player |
 
-
-## Contribuindo
-
-1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'Add nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
-
 ## Printscreens Adicionais
 
 <div align="center">
