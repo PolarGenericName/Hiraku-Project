@@ -13,8 +13,6 @@
 
 ---
 
-## Screenshots
-
 <div align="center">
 
 ![Home](docs/screenshots/homapage.png)
@@ -93,10 +91,16 @@ pnpm start
 
 ## Printscreens Adicionais
 
+</div>
+
+    ---
+
 <div align="center">
 
 ![Detalhes](docs/screenshots/details.png)
 ![Busca](docs/screenshots/search.png)
+
+    ---
 
 </div>
 
