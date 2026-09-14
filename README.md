@@ -4,6 +4,7 @@
 
 # Hiraku
 
+[![Version](https://img.shields.io/badge/version-1.0.0-purple)](https://github.com/PolarGenericName/Hiraku-Project/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 [Características](#características) • [Instalação](#instalação) • [Licença](#licença)
@@ -16,13 +17,9 @@
 
 <div align="center">
 
-> Coloque seus screenshots na pasta `docs/screenshots/` e descomente as linhas abaixo.
-
-<!-- ![Home](docs/screenshots/home.png) -->
-<!-- ![Detalhes](docs/screenshots/details.png) -->
-<!-- ![Player](docs/screenshots/player.png) -->
-<!-- ![Busca](docs/screenshots/search.png) -->
-<!-- ![Perfil](docs/screenshots/profile.png) -->
+![Home](docs/screenshots/homapage.png)
+![Detalhes](docs/screenshots/details.png)
+![Busca](docs/screenshots/search.png)
 
 </div>
 
@@ -152,6 +149,14 @@ hiraku/
 - **[hls.js](https://github.com/video-dev/hls.js/)**
 - **[Electron](https://www.electronjs.org/)**
 - **[shadcn/ui](https://ui.shadcn.com/)**
+
+## Printscreens Adicionais
+
+<div align="center">
+
+> Em breve
+
+</div>
 
 ## Licença
 
