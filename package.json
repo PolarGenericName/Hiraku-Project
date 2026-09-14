@@ -1,9 +1,11 @@
 {
   "name": "hiraku",
   "version": "1.0.0",
+  "description": "Aplicativo de streaming de anime em português brasileiro",
+  "author": "Hiraku Project",
   "type": "module",
   "main": "desktop/electron.cjs",
-  "license": "MIT",
+  "license": "GPL-3.0",
   "scripts": {
     "dev": "concurrently \"tsx server/index.ts\" \"vite --host\"",
     "dev:server": "tsx server/index.ts",
@@ -13,7 +15,9 @@
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
     "electron": "concurrently \"tsx server/index.ts\" \"vite --host\" \"cross-env ELECTRON_DEV=1 electron .\"",
-    "electron:build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && electron ."
+    "electron:build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && electron-builder --win --arm64",
+    "electron:build:linux": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && electron-builder --linux",
+    "dist": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && electron-builder --win --arm64 --linux"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
@@ -40,6 +44,7 @@
     "concurrently": "^10.0.5",
     "cross-env": "^10.1.0",
     "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.19.1",

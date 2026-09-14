@@ -1,0 +1,51 @@
+appId: com.hiraku.app
+productName: Hiraku
+copyright: Copyright © 2026 Hiraku
+npmRebuild: false
+
+directories:
+  output: release
+  buildResources: assets
+
+files:
+  - desktop/**/*
+  - dist/**/*
+  - server/dist/**/*
+  - package.json
+
+extraResources:
+  - from: assets/logo.png
+    to: logo.png
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - arm64
+  icon: assets/icons/icon.ico
+  artifactName: "Hiraku-Setup-${version}-arm64.exe"
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: assets/icons/icon.ico
+  uninstallerIcon: assets/icons/icon.ico
+  installerHeaderIcon: assets/icons/icon.ico
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Hiraku
+
+linux:
+  target:
+    - target: tar.gz
+      arch:
+        - x64
+  icon: assets/icons
+  category: AudioVideo
+  artifactName: "Hiraku-${version}-linux-x64.tar.gz"
+
+publish:
+  provider: github
+  owner: PolarGenericName
+  repo: Hiraku-Project
