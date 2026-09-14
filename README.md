@@ -79,29 +79,6 @@ pnpm start
 | `pnpm start` | Inicia em produção |
 | `pnpm check` | Verifica tipos TypeScript |
 
-## Estrutura do Projeto
-
-```
-hiraku/
-├── client/                  # Frontend React
-│   ├── public/              # Assets estáticos
-│   │   └── logo.png         # Logo do app
-│   └── src/
-│       ├── components/      # Componentes React
-│       ├── contexts/        # Context providers
-│       ├── hooks/           # Custom hooks
-│       ├── lib/             # Utilitários (AniList API, progresso)
-│       ├── pages/           # Páginas da aplicação
-│       └── providers/       # Providers de streaming
-├── server/                  # Backend Express
-│   └── index.ts             # Proxy server + APIs
-├── electron.cjs             # Processo principal Electron
-├── preload.cjs              # Preload script (IPC)
-└── docs/                    # Documentação
-    ├── TODO.md              # Roadmap
-    ├── PROJECT.md           # Documentação detalhada
-    └── CHANGELOG.md         # Histórico de versões
-```
 
 ## Atalhos do Player
 
