@@ -161,12 +161,6 @@ hiraku/
 4. Push para a branch (`git push origin feature/nova-feature`)
 5. Abra um Pull Request
 
-## Licença
-
-Este projeto está licenciado sob a [GNU General Public License v3.0](LICENSE).
-
-> **Aviso:** Este é um projeto educacional. Os conteúdos de streaming são fornecidos por APIs de terceiros e são direitos autorais de seus respectivos criadores.
-
 ## Créditos
 
 - **[AniList](https://anilist.co/)** — Catálogo e metadados de animes
@@ -174,5 +168,9 @@ Este projeto está licenciado sob a [GNU General Public License v3.0](LICENSE).
 - **[hls.js](https://github.com/video-dev/hls.js/)** — Player HLS adaptativo
 - **[Electron](https://www.electronjs.org/)** — Framework desktop
 - **[shadcn/ui](https://ui.shadcn.com/)** — Componentes UI
+
+## Licença
+
+[GNU General Public License v3.0](LICENSE).
 
 
