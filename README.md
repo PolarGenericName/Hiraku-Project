@@ -18,6 +18,13 @@
 <div align="center">
 
 ![Home](docs/screenshots/homapage.png)
+
+</div>
+
+## Printscreens Adicionais
+
+<div align="center">
+
 ![Detalhes](docs/screenshots/details.png)
 ![Busca](docs/screenshots/search.png)
 
