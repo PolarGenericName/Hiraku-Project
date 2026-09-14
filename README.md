@@ -26,30 +26,12 @@
 
 ## Características
 
-- Catálogo de 10.000+ animes via AniList
-- Streaming HLS adaptativo
 - Player com seleção de qualidade e áudio
 - Sistema de progressão e favoritos
-- Busca e filtros por gênero, ano e temporada
-- Top 10 estilo Netflix
 - Trailers via YouTube
 - Discord Rich Presence
 - Atalhos de teclado
 
-## Stack Tecnológica
-
-| Tecnologia | Versão | Uso |
-|------------|--------|-----|
-| React | 19 | UI Framework |
-| Vite | 7 | Build Tool |
-| TypeScript | 5.6 | Type Safety |
-| Tailwind CSS | 4 | Styling |
-| hls.js | 1.7 | HLS Streaming |
-| wouter | 3 | Routing |
-| Express | 4 | Backend Proxy |
-| Electron | 44 | Desktop App |
-| Lucide React | 0.4 | Icons |
-| Discord RPC | 4 | Rich Presence |
 
 ## Instalação
 
@@ -141,14 +123,6 @@ hiraku/
 4. Push para a branch (`git push origin feature/nova-feature`)
 5. Abra um Pull Request
 
-## Créditos
-
-- **[AniList](https://anilist.co/)**
-- **[AnimeFire](https://animefire.plus/)** 
-- **[hls.js](https://github.com/video-dev/hls.js/)**
-- **[Electron](https://www.electronjs.org/)**
-- **[shadcn/ui](https://ui.shadcn.com/)**
-
 ## Printscreens Adicionais
 
 <div align="center">
@@ -157,6 +131,14 @@ hiraku/
 ![Busca](docs/screenshots/search.png)
 
 </div>
+
+## Créditos
+
+- **[AniList](https://anilist.co/)**
+- **[AnimeFire](https://animefire.plus/)** 
+- **[hls.js](https://github.com/video-dev/hls.js/)**
+- **[Electron](https://www.electronjs.org/)**
+- **[shadcn/ui](https://ui.shadcn.com/)**
 
 ## Licença
 
