@@ -1,5 +1,7 @@
 import express from "express";
 import { createServer } from "http";
+import path from "path";
+import fs from "fs";
 
 const ANILIST_API = "https://graphql.anilist.co";
 
@@ -9,6 +11,8 @@ const MAX_JSON_RESPONSE_SIZE = 5 * 1024 * 1024;   // 5MB max for JSON responses
 const ALLOWED_CORS_ORIGINS = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3001",
   "file://",
 ];
 
@@ -116,6 +120,12 @@ async function startServer() {
     setCorsHeaders(req, res);
     res.sendStatus(204);
   });
+
+  // ── Static files (production UI) ────────────────────────────────────────
+  const staticDir = path.join(__dirname, "public");
+  if (fs.existsSync(staticDir)) {
+    app.use(express.static(staticDir));
+  }
 
   // ── AniList GraphQL proxy ───────────────────────────────────────────────
   app.post("/api/anilist", async (req, res) => {
@@ -338,10 +348,20 @@ async function startServer() {
     }
   });
 
-  // ── 404 handler ─────────────────────────────────────────────────────────
-  app.use((req, res) => {
-    res.status(404).json({ error: "Not found" });
-  });
+  // ── SPA fallback ─────────────────────────────────────────────────────────
+  const indexPath = path.join(__dirname, "public", "index.html");
+  if (fs.existsSync(indexPath)) {
+    app.get("*", (req, res) => {
+      if (req.path.startsWith("/api")) {
+        return res.status(404).json({ error: "Not found" });
+      }
+      res.sendFile(indexPath);
+    });
+  } else {
+    app.use((req, res) => {
+      res.status(404).json({ error: "Not found" });
+    });
+  }
 
   const port = 3001;
   server.listen(port, () => {

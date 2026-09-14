@@ -1,15 +1,42 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const { Client } = require('discord-rpc');
+let Client;
+try {
+  Client = require('discord-rpc').Client;
+} catch {
+  console.log('[Discord] discord-rpc not available, Discord integration disabled');
+}
 
 const DISCORD_CLIENT_ID = '1547818333141868587';
+const SERVER_PORT = 3001;
 
 let mainWindow;
 let rpc = null;
 let rpcReady = false;
+let serverProcess = null;
+
+// ── Start Express server in production ────────────────────────────────────────
+function startServer() {
+  if (process.env.ELECTRON_DEV === '1') return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const serverPath = path.join(__dirname, '..', 'dist', 'index.cjs');
+    console.log('[Electron] Starting server from:', serverPath);
+
+    try {
+      require(serverPath);
+      console.log('[Electron] Server started on port', SERVER_PORT);
+      setTimeout(resolve, 1000);
+    } catch (err) {
+      console.error('[Electron] Server start error:', err.message);
+      resolve();
+    }
+  });
+}
 
 // ── Discord RPC ──────────────────────────────────────────────────────────────
 async function initDiscord() {
+  if (!Client) return;
   rpc = new Client({ transport: 'ipc' });
 
   rpc.on('ready', () => {
@@ -97,7 +124,7 @@ function createWindow() {
   });
 
   const devUrl = 'http://localhost:3000';
-  const prodUrl = `file://${path.join(__dirname, '..', 'dist', 'public', 'index.html')}`;
+  const prodUrl = `http://localhost:${SERVER_PORT}`;
   const loadUrl = process.env.ELECTRON_DEV === '1' ? devUrl : prodUrl;
 
   console.log('[Electron] Loading:', loadUrl);
@@ -159,8 +186,9 @@ ipcMain.handle('window-is-maximized', () => {
 });
 
 // ── App ──────────────────────────────────────────────────────────────────────
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   app.setName('Hiraku');
+  await startServer();
   createWindow();
   initDiscord();
 });

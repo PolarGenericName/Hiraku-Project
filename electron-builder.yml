@@ -10,7 +10,7 @@ directories:
 files:
   - desktop/**/*
   - dist/**/*
-  - server/dist/**/*
+  - node_modules/**/*
   - package.json
 
 extraResources:
