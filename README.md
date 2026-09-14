@@ -27,7 +27,7 @@ O **Hiraku** é um aplicativo de desktop para assistir animes em português bras
 ## Índice
 
 1. [Características](#características)
-2. [Download](#download)
+2. [Instalação](#download)
 3. [Atalhos do Player](#atalhos-do-player)
 4. [Screenshots](#screenshots)
 5. [Créditos](#créditos)
