@@ -4,13 +4,7 @@
 
 # Hiraku
 
-![GitHub Release](https://img.shields.io/github/v/release/PolarGenericName/Hiraku-Project)
-![GitHub Downloads](https://img.shields.io/github/downloads/PolarGenericName/Hiraku-Project/total)
-![GitHub License](https://img.shields.io/github/license/PolarGenericName/Hiraku-Project)
-![GitHub Stars](https://img.shields.io/github/stars/PolarGenericName/Hiraku-Project)
-![GitHub Forks](https://img.shields.io/github/forks/PolarGenericName/Hiraku-Project?style=social)
-![GitHub Last Commit](https://img.shields.io/github/last-commit/PolarGenericName/Hiraku-Project)
-![GitHub Contributors](https://img.shields.io/github/contributors/PolarGenericName/Hiraku-Project)
+[![Version](https://img.shields.io/badge/version-1.0.0-purple)](https://github.com/PolarGenericName/Hiraku-Project/releases)
 
 [Características](#características) • [Download](#download) • [Atalhos](#atalhos-do-player) • [Screenshots](#screenshots) • [Licença](#licença)
 
