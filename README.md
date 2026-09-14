@@ -32,21 +32,17 @@
 
 ---
 
-## Funcionalidades
+## Características
 
-- **Catálogo completo** — 10.000+ animes indexados via AniList
-- **Streaming adaptativo** — HLS com qualidade automática via hls.js
-- **Player avançado** — controles completos, seleção de qualidade, áudio dublado/legendado
-- **Sistema de progressão** — retoma de onde você parou
-- **Favoritos** — salve seus animes preferidos
-- **Busca inteligente** — por título, gênero, ano e temporada
-- **Páginas de filtro** — Animes e Filmes separados
-- **Top 10** — ranking estilo Netflix com drag-to-scroll
-- **Trailers** — assista trailers do YouTube
-- **Classificação indicativa** — indicadores oficiais
-- **Discord Rich Presence** — mostra o que você está assistindo
-- **Suporte a tela cheia** — fullscreen nativo
-- **Atalhos de teclado** — espaço, setas, F, M, K
+- Catálogo de 10.000+ animes via AniList
+- Streaming HLS adaptativo
+- Player com seleção de qualidade e áudio
+- Sistema de progressão e favoritos
+- Busca e filtros por gênero, ano e temporada
+- Top 10 estilo Netflix
+- Trailers via YouTube
+- Discord Rich Presence
+- Atalhos de teclado
 
 ## Stack Tecnológica
 
