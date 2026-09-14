@@ -70,13 +70,6 @@ Escolha a versão para o seu sistema operacional:
 
 </div>
 
-## Créditos
-
-- **[AniList](https://anilist.co/)** — catálogo e metadados de anime
-- **[hls.js](https://github.com/video-dev/hls.js/)** — player de vídeo HLS
-- **[Electron](https://www.electronjs.org/)** — framework desktop
-- **[shadcn/ui](https://ui.shadcn.com/)** — componentes de interface
-
 ## Licença
 
 [GNU General Public License v3.0](LICENSE).
