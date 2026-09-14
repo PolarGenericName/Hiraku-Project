@@ -87,7 +87,7 @@ function createWindow() {
     backgroundColor: '#000000',
     frame: false,
     titleBarStyle: 'hidden',
-    icon: path.join(__dirname, 'client', 'public', 'logo.png'),
+    icon: path.join(__dirname, '..', 'assets', 'logo.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
