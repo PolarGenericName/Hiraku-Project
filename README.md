@@ -31,7 +31,7 @@
 
 ---
 
-## Download
+## Instalação
 
 Escolha a versão para o seu sistema operacional:
 
