@@ -2,7 +2,7 @@
   "name": "hiraku",
   "version": "1.0.0",
   "type": "module",
-  "main": "electron.cjs",
+  "main": "desktop/electron.cjs",
   "license": "MIT",
   "scripts": {
     "dev": "concurrently \"tsx server/index.ts\" \"vite --host\"",
