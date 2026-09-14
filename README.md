@@ -7,7 +7,7 @@
 [![Version](https://img.shields.io/badge/version-1.0.0-purple)](https://github.com/PolarGenericName/Hiraku-Project/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-[Características](#características) • [Instalação](#instalação) • [Licença](#licença)
+[Características](#características) • [Download](#download) • [Licença](#licença)
 
 </div>
 
@@ -19,7 +19,6 @@
 
 </div>
 
-
 ---
 
 ## Características
@@ -30,53 +29,25 @@
 - Discord Rich Presence
 - Atalhos de teclado
 
+---
 
-## Instalação
+## Download
 
-### Pré-requisitos
+Escolha a versão para o seu sistema operacional:
 
-- [Node.js](https://nodejs.org/) 18+
-- [pnpm](https://pnpm.io/) 10+
+<div align="center">
 
-### Passo a passo
+| Sistema | Arquivo | Download |
+|---------|---------|----------|
+| **Windows x64** | `Hiraku-Setup-1.0.0-x64.exe` | [Baixar](https://github.com/PolarGenericName/Hiraku-Project/releases/download/v1.0.0/Hiraku-Setup-1.0.0-x64.exe) |
+| **Windows ARM64** | `Hiraku-Setup-1.0.0-arm64.exe` | [Baixar](https://github.com/PolarGenericName/Hiraku-Project/releases/download/v1.0.0/Hiraku-Setup-1.0.0-arm64.exe) |
+| **Linux x64** | `Hiraku-1.0.0-linux-x64.tar.gz` | [Baixar](https://github.com/PolarGenericName/Hiraku-Project/releases/download/v1.0.0/Hiraku-1.0.0-linux-x64.tar.gz) |
 
-```bash
-# 1. Clone o repositório
-git clone https://github.com/PolarGenericName/Hiraku-Project.git
-cd Hiraku-Project
+</div>
 
-# 2. Instale as dependências
-pnpm install
+> **Nota:** A versão Linux é experimental.
 
-# 3. Inicie em modo de desenvolvimento (navegador)
-pnpm dev
-
-# 4. Ou inicie no Electron (desktop)
-pnpm electron
-```
-
-O app estará disponível em `http://localhost:3000`
-
-### Build para Produção
-
-```bash
-# Build do frontend + backend
-pnpm build
-
-# Iniciar em produção
-pnpm start
-```
-
-## Comandos
-
-| Comando | Descrição |
-|---------|-----------|
-| `pnpm dev` | Inicia server + Vite (dev) |
-| `pnpm electron` | Inicia server + Vite + Electron |
-| `pnpm build` | Build para produção |
-| `pnpm start` | Inicia em produção |
-| `pnpm check` | Verifica tipos TypeScript |
-
+---
 
 ## Atalhos do Player
 
@@ -89,25 +60,22 @@ pnpm start
 | `↑` / `↓` | Aumentar / Diminuir volume |
 | `Esc` | Fechar player |
 
-## Printscreens Adicionais
-
-</div>
-
 ---
+
+## Printscreens Adicionais
 
 <div align="center">
 
 ![Detalhes](assets/screenshots/details.png)
 ![Busca](assets/screenshots/search.png)
 
----
-
 </div>
+
+---
 
 ## Créditos
 
 - **[AniList](https://anilist.co/)**
-- **[AnimeFire](https://animefire.plus/)** 
 - **[hls.js](https://github.com/video-dev/hls.js/)**
 - **[Electron](https://www.electronjs.org/)**
 - **[shadcn/ui](https://ui.shadcn.com/)**
@@ -115,5 +83,3 @@ pnpm start
 ## Licença
 
 [GNU General Public License v3.0](LICENSE).
-
-
