@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAccount, type EpisodeHistoryItem } from '@/contexts/AccountContext';
-import { useAnimeDetails } from '@/hooks/useAnime';
+import { useAnimeDetails } from '@/shared/hooks/useAnime';
 import { ArrowLeft, Camera, Trash2, X, Bookmark, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { getEpisodeProgressPercent } from '@/lib/watchProgress';
+import { getEpisodeProgressPercent } from '@/shared/lib/watchProgress';
 
 function HistoryCard({ item, onClick }: { item: EpisodeHistoryItem; onClick: () => void }) {
   const progress = getEpisodeProgressPercent(item.animeId, item.episodeId);

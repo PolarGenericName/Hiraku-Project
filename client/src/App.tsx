@@ -1,19 +1,19 @@
 import { lazy, Suspense } from 'react';
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import Layout from "@/components/Layout";
+import { Toaster } from "@/shared/components/ui/sonner";
+import { TooltipProvider } from "@/shared/components/ui/tooltip";
+import Layout from "@/shared/components/Layout";
 import { Route, Switch } from "wouter";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary from "./shared/components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AccountProvider, useAccount } from "./contexts/AccountContext";
-import LoadingAnimation from "./components/LoadingAnimation";
+import LoadingAnimation from "./shared/components/LoadingAnimation";
 
-const Home = lazy(() => import("./pages/Home"));
-const Search = lazy(() => import("./pages/Search"));
-const AnimeDetails = lazy(() => import("./pages/AnimeDetails"));
-const AnimesPage = lazy(() => import("./pages/AnimesPage"));
-const FilmesPage = lazy(() => import("./pages/FilmesPage"));
-const Profile = lazy(() => import("./pages/Profile"));
+const Home = lazy(() => import("./features/home/Home"));
+const Search = lazy(() => import("./features/search/Search"));
+const AnimeDetails = lazy(() => import("./features/anime/AnimeDetails"));
+const AnimesPage = lazy(() => import("./features/catalog/AnimesPage"));
+const FilmesPage = lazy(() => import("./features/catalog/FilmesPage"));
+const Profile = lazy(() => import("./features/profile/Profile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function PageLoader() {
@@ -32,7 +32,7 @@ function LazyAnimeDetails() { return <Suspense fallback={<PageLoader />}><Layout
 function LazyProfile() { return <Suspense fallback={<PageLoader />}><Layout><Profile /></Layout></Suspense>; }
 function LazyNotFound() { return <Suspense fallback={<PageLoader />}><Layout><NotFound /></Layout></Suspense>; }
 
-const AccountSetup = lazy(() => import("./pages/AccountSetup"));
+const AccountSetup = lazy(() => import("./features/profile/AccountSetup"));
 
 function AppContent() {
   const { isSetup } = useAccount();

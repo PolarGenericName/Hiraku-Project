@@ -14,7 +14,7 @@ import {
   getAnimeByGenre,
   filterSeasonDuplicates,
   type AniListMedia,
-} from '@/lib/anilist';
+} from '@/shared/lib/anilist';
 import {
   findAnimeSlug,
   getAnimeDetails,

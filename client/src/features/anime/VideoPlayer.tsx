@@ -6,7 +6,7 @@ import {
   Languages, Gauge, Zap
 } from 'lucide-react';
 import type { EpisodeStream } from '@/providers/types';
-import { saveEpisodeProgress, getResumeTime } from '@/lib/watchProgress';
+import { saveEpisodeProgress, getResumeTime } from '@/shared/lib/watchProgress';
 import { useAccount } from '@/contexts/AccountContext';
 
 interface VideoPlayerProps {

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates } from '@/lib/anilist';
+import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates } from '@/shared/lib/anilist';
 import { batchCheckAvailability } from '@/providers';
 import { Play, Bookmark } from 'lucide-react';
-import LoadingAnimation from '@/components/LoadingAnimation';
+import LoadingAnimation from '@/shared/components/LoadingAnimation';
 import { useAccount } from '@/contexts/AccountContext';
 
 const YEARS = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i);

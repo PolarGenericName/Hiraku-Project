@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates, getTrendingAnime, getPopularAnime, getUpcomingAnime, getSeasonalAnime } from '@/lib/anilist';
+import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates, getTrendingAnime, getPopularAnime, getUpcomingAnime, getSeasonalAnime } from '@/shared/lib/anilist';
 import { batchCheckAvailability } from '@/providers';
 import { Loader2, X, SlidersHorizontal, Bookmark } from 'lucide-react';
-import LoadingAnimation from '@/components/LoadingAnimation';
+import LoadingAnimation from '@/shared/components/LoadingAnimation';
 import { useAccount } from '@/contexts/AccountContext';
 
 interface SearchFilters {

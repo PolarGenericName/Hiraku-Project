@@ -2,7 +2,7 @@ import { Search, User } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { useAccount } from "@/contexts/AccountContext";
-import TitleBar from "./TitleBar";
+import TitleBar from "@/features/player/TitleBar";
 
 interface LayoutProps {
   children: React.ReactNode;

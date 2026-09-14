@@ -1,19 +1,19 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
-import { useAnimeDetails, useSeasons, useEpisodes, useRecommendations } from '@/hooks/useAnime';
+import { useAnimeDetails, useSeasons, useEpisodes, useRecommendations } from '@/shared/hooks/useAnime';
 import { getEpisodeStream } from '@/providers';
-import { searchAniList } from '@/lib/anilist';
+import { searchAniList } from '@/shared/lib/anilist';
 import type { EpisodeStream } from '@/providers/types';
-import VideoPlayer from '@/components/VideoPlayer';
+import VideoPlayer from '@/features/anime/VideoPlayer';
 import { Loader2, ArrowLeft, Play, Search, ChevronDown, Bookmark, Film, X, Star, Eye } from 'lucide-react';
-import LoadingAnimation from '@/components/LoadingAnimation';
+import LoadingAnimation from '@/shared/components/LoadingAnimation';
 import { useAccount } from '@/contexts/AccountContext';
 import {
   isEpisodeCompleted,
   getEpisodeProgressPercent,
   getNextUnwatchedEpisode,
   getContinueWatchingEpisode,
-} from '@/lib/watchProgress';
+} from '@/shared/lib/watchProgress';
 
 export default function AnimeDetails() {
   const [, params] = useRoute('/anime/:id');

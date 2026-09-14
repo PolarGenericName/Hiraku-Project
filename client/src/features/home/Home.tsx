@@ -6,13 +6,13 @@ import {
   usePopularAnime,
   useSeasonalAnime,
   useAnimeByGenre,
-} from '@/hooks/useAnime';
-import { anilistToAnimeResult } from '@/lib/anilist';
+} from '@/shared/hooks/useAnime';
+import { anilistToAnimeResult } from '@/shared/lib/anilist';
 import { findAnimeSlug, getAnimeDetails } from '@/providers';
 import { Play, Bookmark, ChevronLeft, ChevronRight, Film, X } from 'lucide-react';
-import LoadingAnimation from '@/components/LoadingAnimation';
+import LoadingAnimation from '@/shared/components/LoadingAnimation';
 import { useAccount } from '@/contexts/AccountContext';
-import { getEpisodeProgressPercent } from '@/lib/watchProgress';
+import { getEpisodeProgressPercent } from '@/shared/lib/watchProgress';
 
 function getCurrentSeason() {
   const month = new Date().getMonth();

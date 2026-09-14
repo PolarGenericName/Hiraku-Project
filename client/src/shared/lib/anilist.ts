@@ -349,17 +349,42 @@ export function anilistToAnimeResult(media: AniListMedia) {
 }
 
 /**
- * Filtra duplicatas de seasons do AniList.
- * Remove qualquer entrada que tenha "Season", "2nd", "3rd" etc no título.
+ * Filtra duplicatas e entradas indesejadas do AniList.
+ * Remove seasons, partes, courts, arcos e especiais.
  */
 export function filterSeasonDuplicates(media: AniListMedia[]): AniListMedia[] {
-  // Match "Season X" at start or standalone, "2nd/3rd/etc Season", "Part X", "Cour X"
-  // But NOT "Seasons 1 & 2" which is a legitimate first entry combining seasons
+  // Match "Season X", "2nd/3rd/etc Season", "Part X", "Cour X"
   const seasonPattern = /^Season\s+\d|Season\s+\d|2nd|3rd|4th|5th|6th|7th|Part\s*\d+|Cour\s*\d+/i;
+
+  // Match cour continuations like "Title: Subtitle - CourName"
+  // e.g. "BLEACH: Sennen Kessen-hen - Kashin-tan"
+  const courPattern = /:.*\s-\s/;
 
   return media.filter((item) => {
     const titleRomaji = item.title?.romaji || '';
     const titleEnglish = item.title?.english || '';
-    return !seasonPattern.test(titleRomaji) && !seasonPattern.test(titleEnglish);
+
+    // Filter by title patterns (seasons, parts, courts)
+    if (seasonPattern.test(titleRomaji) || seasonPattern.test(titleEnglish)) {
+      return false;
+    }
+
+    // Filter cour continuations (": Subtitle - Name" pattern)
+    if (courPattern.test(titleRomaji) || courPattern.test(titleEnglish)) {
+      return false;
+    }
+
+    // Filter specials, OVAs, ONAs — rarely standalone anime
+    const format = (item.format || '').toUpperCase();
+    if (format === 'SPECIAL' || format === 'OVA' || format === 'ONA' || format === 'MUSIC') {
+      return false;
+    }
+
+    // Filter TV entries with very few episodes (likely arc/special episodes)
+    if (format === 'TV' && item.episodes && item.episodes <= 3) {
+      return false;
+    }
+
+    return true;
   });
 }
