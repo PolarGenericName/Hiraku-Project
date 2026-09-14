@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="client/public/logo.png" alt="Hiraku Logo" width="120" />
+<img src="assets/logo.png" alt="Hiraku Logo" width="120" />
 
 # Hiraku
 
@@ -15,7 +15,7 @@
 
 <div align="center">
 
-![Home](docs/screenshots/homapage.png)
+![Home](assets/screenshots/homapage.png)
 
 </div>
 
@@ -97,8 +97,8 @@ pnpm start
 
 <div align="center">
 
-![Detalhes](docs/screenshots/details.png)
-![Busca](docs/screenshots/search.png)
+![Detalhes](assets/screenshots/details.png)
+![Busca](assets/screenshots/search.png)
 
 ---
 

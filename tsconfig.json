@@ -1,5 +1,5 @@
 {
-  "include": ["client/src/**/*", "server/**/*"],
+  "include": ["ui/src/**/*", "server/**/*"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "incremental": true,
@@ -16,7 +16,7 @@
     "moduleResolution": "bundler",
     "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./client/src/*"]
+      "@/*": ["./ui/src/*"]
     }
   }
 }
