@@ -30,9 +30,9 @@ O **Hiraku** é um aplicativo de desktop para assistir animes. Ele reúne catál
 
 - **Player integrado** — seleção de qualidade, áudio dublado/legendado e velocidade
 - **Progressão automática** — retoma de onde parou e salva histórico
-- **Trailers** — assista trailers via YouTube direto nos detalhes
+- **Trailers** — assista trailers via YouTube
 - **Discord Rich Presence** — mostra o que você está assistindo no Discord
-- **Atalhos de teclado** — controle total sem usar o mouse
+- **Atalhos de teclado** — controle de player
 
 ## Instalação
 
