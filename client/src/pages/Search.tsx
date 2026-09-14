@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates, getTrendingAnime, getPopularAnime, getUpcomingAnime, getSeasonalAnime } from '@/lib/anilist';
 import { batchCheckAvailability } from '@/providers';
-import { Loader2, Search as SearchIcon, X, SlidersHorizontal, Bookmark } from 'lucide-react';
+import { Loader2, X, SlidersHorizontal, Bookmark } from 'lucide-react';
 import LoadingAnimation from '@/components/LoadingAnimation';
 import { useAccount } from '@/contexts/AccountContext';
 
@@ -141,7 +141,7 @@ export default function Search() {
         const data = await searchAniList(query.trim() || undefined, filters);
         const filtered = filterSeasonDuplicates(data);
 
-        // Check availability on AnimeFire before showing results
+        // Check availability on the streaming provider before showing results
         if (filtered.length > 0) {
           setCheckingAvailability(true);
           try {

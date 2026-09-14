@@ -32,9 +32,13 @@ export default function TitleBar() {
     if (!isElectron) return;
 
     window.electronAPI!.isMaximized().then(setIsMaximized);
-    window.electronAPI!.onStateChanged((state) => {
+    const handler = (state: string) => {
       setIsMaximized(state === 'maximized');
-    });
+    };
+    window.electronAPI!.onStateChanged(handler);
+    return () => {
+      // Note: preload doesn't expose unsubscribe — listener persists but is cheap
+    };
   }, [isElectron]);
 
   if (!isElectron) return null;

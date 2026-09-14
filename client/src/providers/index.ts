@@ -19,7 +19,9 @@ const provider: AnimeProvider = animefireProvider;
 
 // Cache de títulos JP: slug -> { jpTitle, year, episodes }
 // Evita buscar detalhes repetidamente para o mesmo anime
+// LRU: max 200 entries to prevent unbounded growth
 const jpTitleCache = new Map<string, { jpTitle: string; year?: number; episodes?: number }>();
+const JP_CACHE_MAX = 200;
 
 export async function searchAnime(query: string): Promise<AnimeResult[]> {
   return provider.search(query);
@@ -66,7 +68,7 @@ function resultHasYearConflict(searchYear: string | null, result: { title: strin
 }
 
 /**
- * Find the correct AnimeFire slug for an anime by searching and matching titles.
+ * Find the correct slug for an anime by searching and matching titles.
  * Handles multiple versions (e.g., Hunter x Hunter 1999 vs 2011).
  */
 export async function findAnimeSlug(
@@ -79,25 +81,20 @@ export async function findAnimeSlug(
 ): Promise<string | null> {
   // Skip search for anime not yet released
   if (anilistStatus === 'NOT_YET_RELEASED') {
-    console.log('[FindSlug] Skipping unreleased anime:', romajiTitle);
     return null;
   }
 
-  console.log('[FindSlug] Searching:', romajiTitle, englishTitle ? `/ ${englishTitle}` : '', anilistYear ? `year:${anilistYear}` : '', anilistEpisodes ? `eps:${anilistEpisodes}` : '');
-
   const searchYear = anilistYear?.toString() || extractYear(romajiTitle) || extractYear(englishTitle || '');
-  // Only search with romaji and english - native (Japanese) doesn't work on AnimeFire
+  // Only search with romaji and english - native (Japanese) doesn't work on the provider
   const titles = [romajiTitle, englishTitle].filter(Boolean) as string[];
 
   // Check cache first for known JP titles
   // Look up by searching cached JP titles against our search titles
-  for (const [slug, cached] of jpTitleCache) {
+  for (const [slug, cached] of Array.from(jpTitleCache.entries())) {
     const normalizedJp = normalizeTitle(cached.jpTitle);
     for (const searchTitle of titles) {
       if (normalizeTitle(searchTitle) === normalizedJp) {
-        // Check year conflict if we have year info
         if (searchYear && cached.year && cached.year.toString() !== searchYear) continue;
-        console.log('[FindSlug] CACHE hit:', cached.jpTitle, '->', slug);
         return slug;
       }
     }
@@ -118,7 +115,6 @@ export async function findAnimeSlug(
 
   for (const title of titles) {
     const results = await searchAnime(title);
-    console.log(`[FindSlug] "${title}" => ${results.length} results`);
 
     titleResultsMap.set(title, results);
 
@@ -132,10 +128,6 @@ export async function findAnimeSlug(
     }
 
     const normalizedSearch = normalizeTitle(title);
-
-    results.slice(0, 5).forEach((r, i) => {
-      console.log(`[FindSlug]   ${i}: "${r.title}" id:${r.id} year:${r.year}`);
-    });
 
     // Collect exact matches (don't return yet, deduplicate)
     for (const r of results) {
@@ -163,13 +155,11 @@ export async function findAnimeSlug(
 
   // If only one exact match, return it directly
   if (exactMatches.length === 1) {
-    console.log('[FindSlug] EXACT match (unique):', exactMatches[0].id);
     return exactMatches[0].id;
   }
 
   // If only one word match, return it directly
   if (wordMatches.length === 1 && exactMatches.length === 0) {
-    console.log('[FindSlug] WORDS match (unique):', wordMatches[0].title, '->', wordMatches[0].id);
     return wordMatches[0].id;
   }
 
@@ -183,7 +173,6 @@ export async function findAnimeSlug(
         const searchWords = normalizeTitle(title).split(' ').filter(w => w.length > 2);
         const hasKeyword = searchWords.some(w => normalizedResult.includes(w));
         if (hasKeyword) {
-          console.log('[FindSlug] SINGLE RESULT match:', r.title, '->', r.id);
           return r.id;
         }
       }
@@ -195,8 +184,6 @@ export async function findAnimeSlug(
   const disambiguateFrom = ambiguousMatches.length > 1 ? ambiguousMatches : allCandidates;
 
   if (disambiguateFrom.length > 0 && (searchYear || anilistEpisodes || ambiguousMatches.length > 1)) {
-    console.log(`[FindSlug] Checking details for ${disambiguateFrom.length} candidates...`);
-
     // Sort: prioritize candidates that appeared in exact/word matches
     const exactIds = new Set(exactMatches.map(m => m.id));
     const wordIds = new Set(wordMatches.map(m => m.id));
@@ -213,10 +200,13 @@ export async function findAnimeSlug(
         const details = await provider.getAnimeDetails(candidate.id);
         if (!details) continue;
 
-        console.log(`[FindSlug]   Detail: ${candidate.id} "${candidate.title}" eps:${details.totalEpisodes} year:${details.year} jp:${details.titleJp}`);
-
         // Cache the JP title info for future lookups
         if (details.titleJp) {
+          // LRU eviction: remove oldest entry if at capacity
+          if (jpTitleCache.size >= JP_CACHE_MAX) {
+            const firstKey = jpTitleCache.keys().next().value;
+            if (firstKey) jpTitleCache.delete(firstKey);
+          }
           jpTitleCache.set(candidate.id, {
             jpTitle: details.titleJp,
             year: details.year,
@@ -232,7 +222,6 @@ export async function findAnimeSlug(
           const normalizedJp = normalizeTitle(details.titleJp);
           for (const searchTitle of titles) {
             if (normalizeTitle(searchTitle) === normalizedJp) {
-              console.log('[FindSlug] JP TITLE match:', details.titleJp, '->', candidate.id);
               return candidate.id;
             }
           }
@@ -240,7 +229,6 @@ export async function findAnimeSlug(
 
         // If we have a year, prefer matching year
         if (searchYear && detailYear?.toString() === searchYear) {
-          console.log('[FindSlug] DETAIL YEAR match:', candidate.title, '->', candidate.id);
           return candidate.id;
         }
 
@@ -248,7 +236,6 @@ export async function findAnimeSlug(
         if (anilistEpisodes && detailEps) {
           const diff = Math.abs(anilistEpisodes - detailEps);
           if (diff <= 5) {
-            console.log('[FindSlug] DETAIL EPS match:', candidate.title, `(${detailEps} eps)`, '->', candidate.id);
             return candidate.id;
           }
         }
@@ -258,7 +245,6 @@ export async function findAnimeSlug(
     }
   }
 
-  console.log('[FindSlug] No reliable match found');
   return null;
 }
 
@@ -276,12 +262,11 @@ async function findAnimeSlugQuick(
   const titles = [romajiTitle, englishTitle].filter(Boolean) as string[];
 
   // Check cache first
-  for (const [slug, cached] of jpTitleCache) {
+  for (const [slug, cached] of Array.from(jpTitleCache.entries())) {
     const normalizedJp = normalizeTitle(cached.jpTitle);
     for (const searchTitle of titles) {
       if (normalizeTitle(searchTitle) === normalizedJp) {
         if (searchYear && cached.year && cached.year.toString() !== searchYear) continue;
-        console.log('[FindSlugQuick] CACHE hit:', cached.jpTitle, '->', slug);
         return slug;
       }
     }
@@ -324,7 +309,7 @@ async function findAnimeSlugQuick(
 
 /**
  * Batch check availability for multiple anime (used in search results).
- * Returns a Set of AniList IDs that are available on AnimeFire.
+ * Returns a Set of AniList IDs that are available on the streaming provider.
  * Verifies episode count matches AniList data.
  */
 export async function batchCheckAvailability(
@@ -348,11 +333,9 @@ export async function batchCheckAvailability(
               if (anilistEps && episodes.length > 0) {
                 const ratio = episodes.length / anilistEps;
                 // Accept if ratio is within reasonable bounds
-                // Higher limit (15x) to handle AnimeFire combining seasons that AniList lists separately
+                // Higher limit (15x) to handle provider combining seasons that AniList lists separately
                 if (ratio >= 0.5 && ratio <= 15) {
                   available.add(anime.id);
-                } else {
-                  console.log(`[BatchCheck] ${anime.title}: eps mismatch AniList:${anilistEps} vs AnimeFire:${episodes.length} ratio:${ratio.toFixed(1)}`);
                 }
               } else {
                 available.add(anime.id);

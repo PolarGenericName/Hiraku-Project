@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import dashjs from 'dashjs';
+import Hls from 'hls.js';
 import {
   X, Play, Pause, Volume2, VolumeX, Volume1,
   Maximize, Minimize, Settings, SkipForward, SkipBack,
@@ -26,9 +26,9 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<dashjs.MediaPlayerClass | null>(null);
-  const hideControlsTimer = useRef<ReturnType<typeof setTimeout>>();
-  const volumeHoverTimer = useRef<ReturnType<typeof setTimeout>>();
+  const hlsRef = useRef<Hls | null>(null);
+  const hideControlsTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const volumeHoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const { addToHistory } = useAccount();
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -46,12 +46,25 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
   const [selectedAudio, setSelectedAudio] = useState<'dublado' | 'legendado'>('legendado');
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isBuffering, setIsBuffering] = useState(true);
-  const [qualities, setQualities] = useState<dashjs.MediaPlayerBitrate[]>([]);
+  const [qualities, setQualities] = useState<any[]>([]);
   const [selectedQuality, setSelectedQuality] = useState<number>(-1);
 
   const dubStream = stream.streams.find(s => s.audio === 'dublado');
   const legStream = stream.streams.find(s => s.audio === 'legendado');
   const currentStream = (selectedAudio === 'dublado' ? dubStream : legStream) || dubStream || legStream || stream.streams[0];
+
+  if (!currentStream) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white text-lg mb-4">Nenhuma stream disponível</p>
+          <button onClick={onClose} className="px-4 py-2 bg-white/10 rounded-lg text-white hover:bg-white/20">
+            Fechar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -65,91 +78,19 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
     const video = videoRef.current;
     if (!video || !currentStream) return;
 
-    if (playerRef.current) {
-      playerRef.current.destroy();
-      playerRef.current = null;
+    // Cleanup previous instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
     }
 
     setIsBuffering(true);
     setQualities([]);
     setSelectedQuality(-1);
 
+    // The stream URL is an HLS manifest disguised as .jpg
+    // e.g. https://akumast.net/i/.../h.jpg -> /stream/i/.../h.jpg
     const proxyUrl = currentStream.url.replace('https://akumast.net', '/stream');
-
-    const player = dashjs.MediaPlayer().create();
-    playerRef.current = player;
-
-    player.updateSettings({
-      streaming: { buffer: { fastSwitchEnabled: true } },
-    });
-
-    const tryGetQualities = () => {
-      try {
-        const list = player.getBitrateInfoListFor('video');
-        console.log('[Player] dash.js qualities:', list?.length, list);
-        if (list && list.length > 0) {
-          setQualities(list);
-          const highestIndex = list.length - 1;
-          player.setQualityFor('video', highestIndex);
-          setSelectedQuality(highestIndex);
-          return true;
-        }
-      } catch (e) {
-        console.warn('[Player] getBitrateInfoListFor error:', e);
-      }
-
-      // Fallback: parse manifest XML for representations
-      try {
-        const manifest = player.getManifest?.();
-        if (manifest) {
-          const period = manifest.Period?.[0] || manifest.Period;
-          const videoSet = Array.isArray(period?.AdaptationSet)
-            ? period.AdaptationSet.find((a: any) => a.contentType === 'video')
-            : period?.AdaptationSet?.contentType === 'video' ? period.AdaptationSet : null;
-          const reps = videoSet?.Representation;
-          if (reps) {
-            const repList = Array.isArray(reps) ? reps : [reps];
-            const parsed = repList.map((r: any, i: number) => ({
-              height: parseInt(r.height) || 0,
-              width: parseInt(r.width) || 0,
-              bitrate: parseInt(r.bandwidth) || 0,
-              qualityIndex: i,
-              mediaType: 'video' as const,
-            }));
-            console.log('[Player] Parsed from manifest:', parsed);
-            if (parsed.length > 0) {
-              setQualities(parsed);
-              const highestIndex = parsed.length - 1;
-              player.setQualityFor('video', highestIndex);
-              setSelectedQuality(highestIndex);
-              return true;
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('[Player] Manifest parse error:', e);
-      }
-      return false;
-    };
-
-    player.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
-      console.log('[Player] STREAM_INITIALIZED');
-      tryGetQualities();
-      setTimeout(tryGetQualities, 1000);
-      setTimeout(tryGetQualities, 3000);
-    });
-
-    player.on(dashjs.MediaPlayer.events.MANIFEST_LOADED, () => {
-      console.log('[Player] MANIFEST_LOADED');
-      setTimeout(tryGetQualities, 500);
-      setTimeout(tryGetQualities, 1500);
-    });
-
-    player.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-      console.error('[Player] Dash.js error:', e);
-    });
-
-    player.initialize(video, proxyUrl, true);
 
     let lastSaveTime = 0;
 
@@ -208,26 +149,18 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
       const resumeTime = getResumeTime(animeId, stream.episodeId);
       if (resumeTime > 0 && video.currentTime === 0) {
         video.currentTime = resumeTime;
-        console.log('[Player] Resuming from:', resumeTime);
       }
       if (video.duration > 0) {
         window.electronAPI?.setActivity(buildDiscordPayload(true));
-      }
-      if (!tryGetQualities()) {
-        setTimeout(tryGetQualities, 1000);
-        setTimeout(tryGetQualities, 3000);
-        setTimeout(tryGetQualities, 5000);
       }
     };
     const onWaiting = () => setIsBuffering(true);
     const onCanPlay = () => setIsBuffering(false);
     const onEnded = () => {
       setIsPlaying(false);
-      // Mark as completed
       if (video.duration > 0) {
         saveEpisodeProgress(animeId, stream.episodeId, stream.number, stream.season, video.duration, video.duration);
       }
-      // Clear Discord activity
       window.electronAPI?.clearActivity();
     };
 
@@ -239,6 +172,52 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
     video.addEventListener('canplay', onCanPlay);
     video.addEventListener('ended', onEnded);
 
+    // Initialize HLS.js
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        startLevel: -1, // auto
+        capLevelToPlayerSize: true,
+      });
+      hlsRef.current = hls;
+
+      hls.loadSource(proxyUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
+        const levels = data.levels.map((l, i) => ({
+          height: l.height,
+          width: l.width,
+          bitrate: l.bitrate,
+          levelIndex: i,
+        }));
+        setQualities(levels);
+        // Start at highest quality
+        if (levels.length > 0) {
+          const highest = levels.length - 1;
+          hls.currentLevel = highest;
+          setSelectedQuality(highest);
+        }
+        video.play().catch(() => {});
+      });
+
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) {
+          console.error('[Player] HLS fatal error:', data.type, data.details);
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            hls.startLoad();
+          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            hls.recoverMediaError();
+          }
+        }
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS
+      video.src = proxyUrl;
+      video.addEventListener('loadedmetadata', () => {
+        video.play().catch(() => {});
+      });
+    }
+
     return () => {
       video.removeEventListener('play', onPlay);
       video.removeEventListener('pause', onPause);
@@ -247,9 +226,10 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('canplay', onCanPlay);
       video.removeEventListener('ended', onEnded);
-      player.destroy();
-      playerRef.current = null;
-      // Clear Discord Rich Presence when player closes
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
       window.electronAPI?.clearActivity();
     };
   }, [selectedAudio, currentStream?.url]);
@@ -260,12 +240,9 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
   }, [playbackRate]);
 
   useEffect(() => {
-    const player = playerRef.current;
-    if (player) {
-      const idx = selectedQuality >= 0 ? selectedQuality : (qualities.length > 0 ? qualities.length - 1 : 0);
-      try {
-        player.setQualityFor('video', idx);
-      } catch {}
+    const hls = hlsRef.current;
+    if (hls && selectedQuality >= 0) {
+      hls.currentLevel = selectedQuality;
     }
   }, [selectedQuality]);
 

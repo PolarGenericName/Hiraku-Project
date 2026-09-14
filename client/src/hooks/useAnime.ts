@@ -1,6 +1,6 @@
 /**
  * Hooks para buscar dados de animes
- * AniList para catálogo + AnimeFire para episódios PT-BR
+ * AniList para catálogo + provider PT-BR para episódios
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -60,18 +60,21 @@ export function useTrendingAnime(limit: number = 10): UseAnimeListResult {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     const load = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getTrendingAnime(1, limit * 2);
-        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
+        if (!ignore) setAnimes(filterSeasonDuplicates(data).slice(0, limit));
       } catch (err) {
-        setError('Erro ao carregar tendências');
+        if (!ignore) setError('Erro ao carregar tendências');
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => { ignore = true; };
   }, [limit]);
 
   return { animes, loading, error };
@@ -84,18 +87,21 @@ export function usePopularAnime(limit: number = 10): UseAnimeListResult {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     const load = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getPopularAnime(1, limit * 2);
-        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
+        if (!ignore) setAnimes(filterSeasonDuplicates(data).slice(0, limit));
       } catch (err) {
-        setError('Erro ao carregar populares');
+        if (!ignore) setError('Erro ao carregar populares');
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => { ignore = true; };
   }, [limit]);
 
   return { animes, loading, error };
@@ -112,18 +118,21 @@ export function useSeasonalAnime(
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     const load = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getSeasonalAnime(season, year, 1, limit * 2);
-        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
+        if (!ignore) setAnimes(filterSeasonDuplicates(data).slice(0, limit));
       } catch (err) {
-        setError('Erro ao carregar temporada');
+        if (!ignore) setError('Erro ao carregar temporada');
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => { ignore = true; };
   }, [season, year, limit]);
 
   return { animes, loading, error };
@@ -140,9 +149,11 @@ export function useAnimeDetails(id: number | null): UseAnimeDetailsResult {
   useEffect(() => {
     if (!id) {
       setLoading(false);
+      setError(null);
       return;
     }
 
+    let ignore = false;
     const load = async () => {
       try {
         setLoading(true);
@@ -150,6 +161,7 @@ export function useAnimeDetails(id: number | null): UseAnimeDetailsResult {
 
         // 1. Fetch AniList metadata
         const media = await getMediaById(id);
+        if (ignore) return;
         setAnime(media);
 
         if (!media?.title?.romaji) {
@@ -157,7 +169,7 @@ export function useAnimeDetails(id: number | null): UseAnimeDetailsResult {
           return;
         }
 
-        // 2. Find the correct AnimeFire slug by matching title
+        // 2. Find the correct slug by matching title
         const slug = await findAnimeSlug(
           media.title.romaji,
           media.title.english,
@@ -167,12 +179,13 @@ export function useAnimeDetails(id: number | null): UseAnimeDetailsResult {
           media.title.native
         );
 
+        if (ignore) return;
         setProviderSlug(slug);
 
-        // 3. Fetch AnimeFire details for PT-BR synopsis and extra data
+        // 3. Fetch details for PT-BR synopsis and extra data
         if (slug) {
           const details = await getAnimeDetails(slug);
-          if (details) {
+          if (details && !ignore) {
             setAnime((prev) => prev ? {
               ...prev,
               description: details.description || prev.description,
@@ -184,12 +197,13 @@ export function useAnimeDetails(id: number | null): UseAnimeDetailsResult {
           }
         }
       } catch (err) {
-        setError('Erro ao carregar detalhes');
+        if (!ignore) setError('Erro ao carregar detalhes');
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => { ignore = true; };
   }, [id]);
 
   return { anime, providerSlug, providerDetails, loading, error };
@@ -207,18 +221,21 @@ export function useSeasons(slug: string | null): UseSeasonsResult {
       return;
     }
 
+    let ignore = false;
     const load = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getSeasons(slug);
-        setSeasons(data);
+        if (!ignore) setSeasons(data);
       } catch (err) {
-        setError('Erro ao carregar temporadas');
+        if (!ignore) setError('Erro ao carregar temporadas');
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => { ignore = true; };
   }, [slug]);
 
   return { seasons, loading, error };
@@ -239,18 +256,21 @@ export function useEpisodes(
       return;
     }
 
+    let ignore = false;
     const load = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getEpisodes(slug, seasonNumber);
-        setEpisodes(data);
+        if (!ignore) setEpisodes(data);
       } catch (err) {
-        setError('Erro ao carregar episódios');
+        if (!ignore) setError('Erro ao carregar episódios');
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => { ignore = true; };
   }, [slug, seasonNumber]);
 
   return { episodes, loading, error };
@@ -268,18 +288,21 @@ export function useRecommendations(slug: string | null): { recommendations: Reco
       return;
     }
 
+    let ignore = false;
     const load = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getRecommendations(slug);
-        setRecommendations(data);
+        if (!ignore) setRecommendations(data);
       } catch (err) {
-        setError('Erro ao carregar recomendações');
+        if (!ignore) setError('Erro ao carregar recomendações');
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => { ignore = true; };
   }, [slug]);
 
   return { recommendations, loading, error };
@@ -292,18 +315,21 @@ export function useHeroAnimes(limit: number = 5): UseAnimeListResult {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     const load = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getHeroAnimes(limit * 2);
-        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
+        if (!ignore) setAnimes(filterSeasonDuplicates(data).slice(0, limit));
       } catch (err) {
-        setError('Erro ao carregar hero');
+        if (!ignore) setError('Erro ao carregar hero');
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => { ignore = true; };
   }, [limit]);
 
   return { animes, loading, error };
@@ -316,18 +342,21 @@ export function useUpcomingAnime(limit: number = 10): UseAnimeListResult {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     const load = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getUpcomingAnime(1, limit * 2);
-        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
+        if (!ignore) setAnimes(filterSeasonDuplicates(data).slice(0, limit));
       } catch (err) {
-        setError('Erro ao carregar novidades');
+        if (!ignore) setError('Erro ao carregar novidades');
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => { ignore = true; };
   }, [limit]);
 
   return { animes, loading, error };
@@ -340,18 +369,21 @@ export function useAnimeByGenre(genre: string, limit: number = 10): UseAnimeList
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     const load = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getAnimeByGenre(genre, 1, limit * 2);
-        setAnimes(filterSeasonDuplicates(data).slice(0, limit));
+        if (!ignore) setAnimes(filterSeasonDuplicates(data).slice(0, limit));
       } catch (err) {
-        setError(`Erro ao carregar animes de ${genre}`);
+        if (!ignore) setError(`Erro ao carregar animes de ${genre}`);
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     load();
+    return () => { ignore = true; };
   }, [genre, limit]);
 
   return { animes, loading, error };

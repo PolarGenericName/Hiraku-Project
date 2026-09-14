@@ -47,7 +47,11 @@ function loadAccount(): AccountData | null {
 }
 
 function saveAccount(data: AccountData) {
-  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(data));
+  try {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(data));
+  } catch {
+    // localStorage full or unavailable — data won't persist
+  }
 }
 
 export function AccountProvider({ children }: { children: ReactNode }) {

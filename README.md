@@ -1,105 +1,159 @@
-# 🎬 Hiraku - Anime Streaming PT-BR
+<div align="center">
 
-![Hiraku](https://img.shields.io/badge/Hiraku-v1.2.0-purple)
-![React](https://img.shields.io/badge/React-19-61DAFB)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6)
-![Tailwind](https://img.shields.io/badge/Tailwind-4-06B6D4)
+<img src="client/public/logo.png" alt="Hiraku Logo" width="120" />
 
-Aplicativo de streaming de anime em português brasileiro, construído com tecnologias modernas e focado em experiência do usuário.
+# Hiraku
 
-## ✨ Funcionalidades
+**Aplicativo de streaming de anime em português brasileiro**
 
-- **Catálogo completo** via AniList (10.000+ animes)
-- **Streaming HD** via AnimeFire (360p e 720p DASH)
-- **Player avançado** com controles completos
-- **Sistema de progressão** - salva onde você parou
-- **Favoritos** - salve seus animes preferidos
-- **Busca inteligente** por título, gênero, ano
-- **Páginas de filtro** - Animes e Filmes separados
-- **Top 10** estilo Netflix
-- **Trailers** do YouTube
-- **Classificação indicativa** oficial
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript)](https://www.typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss)](https://tailwindcss.com)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite)](https://vitejs.dev)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-## 🚀 Stack Tecnológica
+</div>
+
+---
+
+## Screenshots
+
+<div align="center">
+
+> Coloque seus screenshots na pasta `docs/screenshots/` e descomente as linhas abaixo.
+
+<!-- ![Home](docs/screenshots/home.png) -->
+<!-- ![Detalhes](docs/screenshots/details.png) -->
+<!-- ![Player](docs/screenshots/player.png) -->
+<!-- ![Busca](docs/screenshots/search.png) -->
+<!-- ![Perfil](docs/screenshots/profile.png) -->
+
+</div>
+
+---
+
+## Funcionalidades
+
+- **Catálogo completo** — 10.000+ animes indexados via AniList
+- **Streaming adaptativo** — HLS com qualidade automática via hls.js
+- **Player avançado** — controles completos, seleção de qualidade, áudio dublado/legendado
+- **Sistema de progressão** — retoma de onde você parou
+- **Favoritos** — salve seus animes preferidos
+- **Busca inteligente** — por título, gênero, ano e temporada
+- **Páginas de filtro** — Animes e Filmes separados
+- **Top 10** — ranking estilo Netflix com drag-to-scroll
+- **Trailers** — assista trailers do YouTube
+- **Classificação indicativa** — indicadores oficiais
+- **Discord Rich Presence** — mostra o que você está assistindo
+- **Suporte a tela cheia** — fullscreen nativo
+- **Atalhos de teclado** — espaço, setas, F, M, K
+
+## Stack Tecnológica
 
 | Tecnologia | Versão | Uso |
 |------------|--------|-----|
 | React | 19 | UI Framework |
 | Vite | 7 | Build Tool |
-| TypeScript | 5.5 | Type Safety |
+| TypeScript | 5.6 | Type Safety |
 | Tailwind CSS | 4 | Styling |
-| dashjs | 5.2 | DASH Streaming |
+| hls.js | 1.7 | HLS Streaming |
 | wouter | 3 | Routing |
 | Express | 4 | Backend Proxy |
+| Electron | 44 | Desktop App |
 | Lucide React | 0.4 | Icons |
+| Discord RPC | 4 | Rich Presence |
 
-## 📦 Instalação
+## Instalação
+
+### Pré-requisitos
+
+- [Node.js](https://nodejs.org/) 18+
+- [pnpm](https://pnpm.io/) 10+
+
+### Passo a passo
 
 ```bash
-# Clonar o repositório
+# 1. Clone o repositório
 git clone https://github.com/PolarGenericName/Hiraku-Project.git
 cd Hiraku-Project
 
-# Instalar dependências
+# 2. Instale as dependências
 pnpm install
 
-# Iniciar servidor de desenvolvimento
+# 3. Inicie em modo de desenvolvimento (navegador)
 pnpm dev
+
+# 4. Ou inicie no Electron (desktop)
+pnpm electron
 ```
 
 O app estará disponível em `http://localhost:3000`
 
-## 🏗️ Estrutura do Projeto
+### Build para Produção
+
+```bash
+# Build do frontend + backend
+pnpm build
+
+# Iniciar em produção
+pnpm start
+```
+
+## Comandos
+
+| Comando | Descrição |
+|---------|-----------|
+| `pnpm dev` | Inicia server + Vite (dev) |
+| `pnpm electron` | Inicia server + Vite + Electron |
+| `pnpm build` | Build para produção |
+| `pnpm start` | Inicia em produção |
+| `pnpm check` | Verifica tipos TypeScript |
+
+## Estrutura do Projeto
 
 ```
 hiraku/
-├── client/                 # Frontend React
-│   ├── public/rating/     # Ícones de classificação
-│   ├── src/
-│   │   ├── components/    # Componentes React
-│   │   ├── hooks/         # Custom hooks
-│   │   ├── lib/           # Utilitários
-│   │   ├── pages/         # Páginas
-│   │   └── providers/     # API providers
-│   └── ...
-├── server/                 # Backend Express
-│   └── index.ts           # Proxy server
-└── docs/                   # Documentação
-    ├── PROJECT.md         # Documentação completa
-    ├── CHANGELOG.md       # Histórico de versões
-    └── TODO.md            # Próximos passos
+├── client/                  # Frontend React
+│   ├── public/              # Assets estáticos
+│   │   └── logo.png         # Logo do app
+│   └── src/
+│       ├── components/      # Componentes React
+│       ├── contexts/        # Context providers
+│       ├── hooks/           # Custom hooks
+│       ├── lib/             # Utilitários (AniList API, progresso)
+│       ├── pages/           # Páginas da aplicação
+│       └── providers/       # Providers de streaming
+├── server/                  # Backend Express
+│   └── index.ts             # Proxy server + APIs
+├── electron.cjs             # Processo principal Electron
+├── preload.cjs              # Preload script (IPC)
+└── docs/                    # Documentação
+    ├── TODO.md              # Roadmap
+    ├── PROJECT.md           # Documentação detalhada
+    └── CHANGELOG.md         # Histórico de versões
 ```
 
-## 🔧 Comandos Úteis
+## Atalhos do Player
 
-```bash
-# Desenvolvimento
-pnpm dev                    # Inicia server + Vite
+| Tecla | Ação |
+|-------|------|
+| `Espaço` / `K` | Play / Pause |
+| `F` | Tela cheia |
+| `M` | Mudo |
+| `←` / `→` | Retroceder / Avançar 10s |
+| `↑` / `↓` | Aumentar / Diminuir volume |
+| `Esc` | Fechar player |
 
-# Build
-pnpm build                  # Build para produção
+## Segurança
 
-# Lint
-pnpm lint                   # Verifica código
+- Proxy server com rate limiting (200 req/min)
+- CORS restrito a origens permitidas
+- Validação de queries GraphQL (bloqueio de introspection)
+- Tamanho máximo de resposta configurado
+- Electron com `nodeIntegration: false` e `contextIsolation: true`
+- Restrição de navegação e bloqueio de popups
 
-# Type Check
-pnpm typecheck              # Verifica tipos TypeScript
-```
-
-## 📚 Documentação
-
-- [Documentação do Projeto](docs/PROJECT.md)
-- [Changelog](docs/CHANGELOG.md)
-- [Próximos Passos](docs/TODO.md)
-
-## 🔐 Segurança
-
-- Proxy server evita CORS e rate limits
-- Validação de inputs
-- Headers de segurança
-- Rate limiting em desenvolvimento
-
-## 🤝 Contribuindo
+## Contribuindo
 
 1. Fork o projeto
 2. Crie uma branch (`git checkout -b feature/nova-feature`)
@@ -107,15 +161,19 @@ pnpm typecheck              # Verifica tipos TypeScript
 4. Push para a branch (`git push origin feature/nova-feature`)
 5. Abra um Pull Request
 
-## 📄 Licença
+## Licença
 
-Este projeto é para uso educacional. Os conteúdos de anime são direitos autorais de seus respectivos criadores.
+Este projeto está licenciado sob a [GNU General Public License v3.0](LICENSE).
 
-## 🔗 Links
+> **Aviso:** Este é um projeto educacional. Os conteúdos de streaming são fornecidos por APIs de terceiros e são direitos autorais de seus respectivos criadores.
 
-- [GitHub](https://github.com/PolarGenericName/Hiraku-Project)
-- [AniList API](https://anilist.gitbook.io/anilist-apiv2-docs/)
-- [AnimeFire API](https://animefire.io)
+## Créditos
+
+- **[AniList](https://anilist.co/)** — Catálogo e metadados de animes
+- **[AnimeFire](https://animefire.plus/)** — Provider de streaming PT-BR
+- **[hls.js](https://github.com/video-dev/hls.js/)** — Player HLS adaptativo
+- **[Electron](https://www.electronjs.org/)** — Framework desktop
+- **[shadcn/ui](https://ui.shadcn.com/)** — Componentes UI
 
 ---
 

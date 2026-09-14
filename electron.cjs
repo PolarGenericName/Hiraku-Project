@@ -112,6 +112,14 @@ function createWindow() {
     console.log('[Electron] Page loaded successfully');
   });
 
+  // Restrict navigation to prevent XSS-based redirects
+  mainWindow.webContents.on('will-navigate', (e) => {
+    e.preventDefault();
+  });
+
+  // Block new windows/popups
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });

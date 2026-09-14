@@ -3,10 +3,57 @@ import { createServer } from "http";
 
 const ANILIST_API = "https://graphql.anilist.co";
 
-// Request cache to avoid 429 rate limits
-const cache = new Map<string, { data: any; expires: number }>();
-const CACHE_TTL = 60_000; // 60 seconds
+// ── Security Constants ──────────────────────────────────────────────────────
+const MAX_PROXY_RESPONSE_SIZE = 50 * 1024 * 1024; // 50MB max for proxy responses
+const MAX_JSON_RESPONSE_SIZE = 5 * 1024 * 1024;   // 5MB max for JSON responses
+const ALLOWED_CORS_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "file://",
+];
 
+// ── Rate Limiter ────────────────────────────────────────────────────────────
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 200; // max requests per window
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return false;
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) return true;
+  return false;
+}
+
+// Cleanup old entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap) {
+    if (now > entry.resetAt) rateLimitMap.delete(ip);
+  }
+}, 300_000);
+
+// ── CORS Helper ─────────────────────────────────────────────────────────────
+function setCorsHeaders(req: express.Request, res: express.Response) {
+  const origin = req.headers.origin || "";
+  if (ALLOWED_CORS_ORIGINS.some(o => origin === o || (o === "file://" && origin.startsWith("file://")))) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+// ── Cache ───────────────────────────────────────────────────────────────────
+const cache = new Map<string, { data: any; expires: number }>();
+const CACHE_TTL = 60_000;
+
+// ── Trailer Query ───────────────────────────────────────────────────────────
 const TRAILER_QUERY = `
   query ($id: Int) {
     Media(id: $id, type: ANIME) {
@@ -52,26 +99,48 @@ async function fetchAniListTrailer(anilistId: number) {
 
 async function startServer() {
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: "1mb" }));
   const server = createServer(app);
 
-  // AniList GraphQL proxy - avoids CORS and rate limit issues from browser
+  // ── Rate limiting middleware ─────────────────────────────────────────────
+  app.use((req, res, next) => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    if (isRateLimited(ip)) {
+      return res.status(429).json({ error: "Too many requests" });
+    }
+    next();
+  });
+
+  // ── CORS preflight ──────────────────────────────────────────────────────
+  app.options("*", (req, res) => {
+    setCorsHeaders(req, res);
+    res.sendStatus(204);
+  });
+
+  // ── AniList GraphQL proxy ───────────────────────────────────────────────
   app.post("/api/anilist", async (req, res) => {
     const query = req.body?.query || "";
     const variables = req.body?.variables || {};
+
+    // Block introspection queries
+    if (query.includes("__schema") || query.includes("__type")) {
+      return res.status(403).json({ error: "Introspection not allowed" });
+    }
+
+    // Reject excessively large queries or variables
+    if (query.length > 10000 || JSON.stringify(variables).length > 5000) {
+      return res.status(413).json({ error: "Query too large" });
+    }
+
     const cacheKey = JSON.stringify({ q: query.trim(), v: variables });
 
-    console.log("[AniList] Request received, query snippet:", query.substring(0, 80));
+    setCorsHeaders(req, res);
 
-    // Check cache first
     const cached = cache.get(cacheKey);
     if (cached && Date.now() < cached.expires) {
-      console.log("[AniList] Cache HIT");
-      res.setHeader("Access-Control-Allow-Origin", "*");
       return res.json(cached.data);
     }
 
-    console.log("[AniList] Cache MISS, fetching from upstream...");
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
@@ -90,11 +159,9 @@ async function startServer() {
       });
 
       clearTimeout(timeout);
-      console.log("[AniList] Upstream status:", response.status);
 
       const data = await response.json();
 
-      // Cache successful responses
       if (response.ok) {
         cache.set(cacheKey, { data, expires: Date.now() + CACHE_TTL });
         if (cache.size > 500) {
@@ -103,45 +170,40 @@ async function startServer() {
         }
       }
 
-      res.setHeader("Access-Control-Allow-Origin", "*");
       res.json(data);
-    } catch (error: any) {
-      console.error("[AniList] Error:", error.message);
-      res.status(500).json({ error: error.message });
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
-  // Trailer endpoint - fetches YouTube trailer from AniList
+  // ── Trailer endpoint ────────────────────────────────────────────────────
   app.get("/api/trailer/:id", async (req, res) => {
     const anilistId = parseInt(req.params.id, 10);
     if (isNaN(anilistId)) {
       return res.status(400).json({ error: "Invalid AniList ID" });
     }
 
-    console.log("[Trailer] Fetching trailer for AniList ID:", anilistId);
+    setCorsHeaders(req, res);
 
     try {
       const trailer = await fetchAniListTrailer(anilistId);
       if (!trailer) {
         return res.status(404).json({ error: "No trailer found" });
       }
-
-      res.setHeader("Access-Control-Allow-Origin", "*");
       res.json(trailer);
-    } catch (error: any) {
-      console.error("[Trailer] Error:", error.message);
-      res.status(500).json({ error: error.message });
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
-  // YouTube trailer search - fallback when AniList has no trailer
+  // ── YouTube trailer search ──────────────────────────────────────────────
   app.get("/api/trailer-search", async (req, res) => {
     const query = req.query.q as string;
     if (!query) {
       return res.status(400).json({ error: "Missing q parameter" });
     }
 
-    console.log("[TrailerSearch] Searching YouTube for:", query);
+    setCorsHeaders(req, res);
 
     try {
       const searchQuery = encodeURIComponent(`${query} official trailer`);
@@ -153,32 +215,24 @@ async function startServer() {
       });
 
       const html = await response.text();
-
-      // Extract video IDs from YouTube search results
-      // YouTube embeds video data in JSON within the HTML
       const videoIdMatch = html.match(/"videoId":"([^"]+)"/);
       if (!videoIdMatch) {
-        console.log("[TrailerSearch] No video found");
         return res.status(404).json({ error: "No trailer found" });
       }
 
       const videoId = videoIdMatch[1];
-      console.log("[TrailerSearch] Found video:", videoId);
-
-      res.setHeader("Access-Control-Allow-Origin", "*");
       res.json({
         videoId,
         thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
         embedUrl: `https://www.youtube.com/embed/${videoId}`,
         watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
       });
-    } catch (error: any) {
-      console.error("[TrailerSearch] Error:", error.message);
-      res.status(500).json({ error: error.message });
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
-  // CORS proxy - forwards requests to allowed domains only
+  // ── CORS proxy ────────────────────────────────────────────────────────
   const ALLOWED_PROXY_HOSTS = ["api.animefire.io"];
   app.get("/api/proxy", async (req, res) => {
     const targetUrl = req.query.url as string;
@@ -186,17 +240,30 @@ async function startServer() {
       return res.status(400).json({ error: "Missing url parameter" });
     }
 
-    // Validate URL belongs to an allowed host
+    setCorsHeaders(req, res);
+
+    // Validate URL: correct host + no path traversal
+    let parsedUrl: URL;
     try {
-      const parsedUrl = new URL(targetUrl);
-      if (!ALLOWED_PROXY_HOSTS.includes(parsedUrl.hostname)) {
-        return res.status(403).json({ error: "Host not allowed" });
-      }
+      parsedUrl = new URL(targetUrl);
     } catch {
       return res.status(400).json({ error: "Invalid URL" });
     }
 
-    console.log("[Proxy] Fetching:", targetUrl.substring(0, 150));
+    if (!ALLOWED_PROXY_HOSTS.includes(parsedUrl.hostname)) {
+      return res.status(403).json({ error: "Host not allowed" });
+    }
+
+    // Block path traversal attempts
+    const decodedPath = decodeURIComponent(parsedUrl.pathname);
+    if (decodedPath.includes("..") || decodedPath.includes("//")) {
+      return res.status(403).json({ error: "Path not allowed" });
+    }
+
+    // Only allow safe path patterns
+    if (!/^\/(animes|anime|episode)\//.test(decodedPath)) {
+      return res.status(403).json({ error: "Path not allowed" });
+    }
 
     try {
       const controller = new AbortController();
@@ -205,8 +272,7 @@ async function startServer() {
       const response = await fetch(targetUrl, {
         signal: controller.signal,
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
           "Accept": "*/*",
           "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
           "Origin": "https://animefire.io",
@@ -217,45 +283,69 @@ async function startServer() {
       clearTimeout(timeout);
 
       if (!response.ok) {
-        console.log("[Proxy] Upstream error:", response.status);
-        return res
-          .status(response.status)
-          .json({ error: `Upstream returned ${response.status}` });
+        return res.status(response.status).json({ error: `Upstream returned ${response.status}` });
       }
 
       const contentType = response.headers.get("content-type") || "";
 
-      // Stream binary data (video segments, manifests)
+      // Stream binary data with size limit
       if (contentType.includes("dash") || contentType.includes("mp4") || contentType.includes("octet-stream") || contentType.includes("xml") || targetUrl.includes(".mpd") || targetUrl.includes(".m4s") || targetUrl.includes("/i/")) {
-        res.setHeader("Access-Control-Allow-Origin", "*");
+        const contentLength = parseInt(response.headers.get("content-length") || "0", 10);
+        if (contentLength > MAX_PROXY_RESPONSE_SIZE) {
+          return res.status(413).json({ error: "Response too large" });
+        }
+
         res.setHeader("Content-Type", contentType || "application/octet-stream");
 
-        const buffer = await response.arrayBuffer();
-        console.log("[Proxy] Stream OK, type:", contentType.substring(0, 30), "size:", buffer.byteLength);
-        res.send(Buffer.from(buffer));
+        // Stream with size tracking
+        const reader = response.body?.getReader();
+        if (!reader) {
+          return res.status(500).json({ error: "No response body" });
+        }
+
+        const chunks: Buffer[] = [];
+        let totalSize = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          totalSize += value.length;
+          if (totalSize > MAX_PROXY_RESPONSE_SIZE) {
+            reader.cancel();
+            return res.status(413).json({ error: "Response too large" });
+          }
+          chunks.push(Buffer.from(value));
+        }
+
+        res.send(Buffer.concat(chunks));
         return;
       }
 
-      // Text/JSON responses
+      // Text/JSON responses with size limit
       const body = await response.text();
-      console.log("[Proxy] OK, type:", contentType.substring(0, 30), "length:", body.length);
+      if (body.length > MAX_JSON_RESPONSE_SIZE) {
+        return res.status(413).json({ error: "Response too large" });
+      }
 
-      res.setHeader("Access-Control-Allow-Origin", "*");
       if (contentType.includes("json")) {
         res.setHeader("Content-Type", "application/json; charset=utf-8");
       } else {
         res.setHeader("Content-Type", contentType || "text/html; charset=utf-8");
       }
       res.send(body);
-    } catch (error: any) {
-      console.error("[Proxy] Error:", error.message);
-      res.status(500).json({ error: error.message });
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
     }
+  });
+
+  // ── 404 handler ─────────────────────────────────────────────────────────
+  app.use((req, res) => {
+    res.status(404).json({ error: "Not found" });
   });
 
   const port = 3001;
   server.listen(port, () => {
-    console.log(`[Proxy] Server running on http://localhost:${port}/`);
+    console.log(`[Server] Running on http://localhost:${port}/`);
   });
 }
 

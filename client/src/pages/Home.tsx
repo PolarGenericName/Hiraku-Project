@@ -9,7 +9,7 @@ import {
 } from '@/hooks/useAnime';
 import { anilistToAnimeResult } from '@/lib/anilist';
 import { findAnimeSlug, getAnimeDetails } from '@/providers';
-import { Loader2, Play, Bookmark, ChevronLeft, ChevronRight, Film, X, Star } from 'lucide-react';
+import { Play, Bookmark, ChevronLeft, ChevronRight, Film, X } from 'lucide-react';
 import LoadingAnimation from '@/components/LoadingAnimation';
 import { useAccount } from '@/contexts/AccountContext';
 import { getEpisodeProgressPercent } from '@/lib/watchProgress';
@@ -80,7 +80,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [heroAnimes.length]);
 
-  // Fetch PT-BR descriptions from AnimeFire
+  // Fetch PT-BR descriptions from streaming provider
   useEffect(() => {
     if (heroAnimes.length === 0) return;
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates } from '@/lib/anilist';
 import { batchCheckAvailability } from '@/providers';
-import { Loader2, Star, Play, AlertCircle, Bookmark } from 'lucide-react';
+import { Play, Bookmark } from 'lucide-react';
 import LoadingAnimation from '@/components/LoadingAnimation';
 import { useAccount } from '@/contexts/AccountContext';
 
@@ -49,7 +49,7 @@ export default function FilterPage({ format, title }: FilterPageProps) {
         const filtered = filterSeasonDuplicates(data);
         setResults(filtered);
 
-        // Check availability on AnimeFire
+        // Check availability on the streaming provider
         if (filtered.length > 0) {
           try {
             const animesToCheck = filtered.map((anime: any) => ({

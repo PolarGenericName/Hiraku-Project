@@ -42,7 +42,7 @@ export default function AnimeDetails() {
 
   // Check for trailer availability
   const hasTrailer = anime?.trailer?.site === 'youtube';
-  const trailerVideoId = hasTrailer ? anime.trailer.id : fallbackTrailer?.videoId;
+  const trailerVideoId = hasTrailer ? anime!.trailer!.id : fallbackTrailer?.videoId;
 
   // Drag-to-scroll for recommendations
   const recScrollRef = useRef<HTMLDivElement>(null);
@@ -51,6 +51,9 @@ export default function AnimeDetails() {
   const recStartY = useRef(0);
   const recScrollLeft = useRef(0);
   const recWasDragged = useRef(false);
+
+  // Race condition guard for episode stream loading
+  const episodeRequestRef = useRef(0);
 
   const handleRecMouseDown = (e: React.MouseEvent) => {
     if (!recScrollRef.current) return;
@@ -169,15 +172,20 @@ export default function AnimeDetails() {
   }, [episodes, loadingEpisodes, selectedSeason]);
 
   const handleEpisodeClick = async (episodeId: string, episodeNumber: string) => {
+    const requestId = ++episodeRequestRef.current;
     setSelectedEpisode(episodeNumber);
     setLoadingPlayer(true);
     try {
       const stream = await getEpisodeStream(episodeId);
-      if (stream) setPlayerStream(stream);
+      if (requestId === episodeRequestRef.current) {
+        if (stream) setPlayerStream(stream);
+      }
     } catch (err) {
       console.error('Failed to load stream:', err);
     } finally {
-      setLoadingPlayer(false);
+      if (requestId === episodeRequestRef.current) {
+        setLoadingPlayer(false);
+      }
     }
   };
 

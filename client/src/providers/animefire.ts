@@ -1,6 +1,6 @@
 /**
- * AnimeFire Provider - PT-BR
- * Uses the AnimeFire REST API at api.animefire.io
+ * Streaming Provider - PT-BR
+ * Uses the streaming REST API
  */
 
 import type {
@@ -31,7 +31,6 @@ export class AnimeFireProvider implements AnimeProvider {
 
   async search(query: string): Promise<AnimeResult[]> {
     try {
-      console.log('[AnimeFire] Searching:', query);
       const json = await apiGet<any>(`/animes/pesquisar?q=${encodeURIComponent(query)}`);
       const items: any[] = json.data || [];
 
@@ -43,17 +42,15 @@ export class AnimeFireProvider implements AnimeProvider {
         year: item.published_at ? parseInt(item.published_at.substring(0, 4)) : undefined,
       }));
 
-      console.log('[AnimeFire] Search results:', results.length);
       return results;
     } catch (error) {
-      console.error('[AnimeFire] Search error:', error);
+      console.error('[Provider] Search error:', error);
       return [];
     }
   }
 
   async getAnimeDetails(id: string): Promise<AnimeDetails | null> {
     try {
-      console.log('[AnimeFire] Details:', id);
       const json = await apiGet<any>(`/anime/${id}`);
       const data = json.data;
       if (!data?.hero) return null;
@@ -85,7 +82,7 @@ export class AnimeFireProvider implements AnimeProvider {
         } : undefined,
       };
     } catch (error) {
-      console.error('[AnimeFire] Details error:', error);
+      console.error('[Provider] Details error:', error);
       return null;
     }
   }
@@ -110,10 +107,9 @@ export class AnimeFireProvider implements AnimeProvider {
         };
       });
 
-      console.log('[AnimeFire] Seasons:', seasons.length);
       return seasons;
     } catch (error) {
-      console.error('[AnimeFire] Seasons error:', error);
+      console.error('[Provider] Seasons error:', error);
       return [{ number: 1, name: 'Temporada 1', episodeCount: 0 }];
     }
   }
@@ -140,10 +136,9 @@ export class AnimeFireProvider implements AnimeProvider {
 
       episodes.sort((a, b) => parseFloat(a.number) - parseFloat(b.number));
 
-      console.log('[AnimeFire] Episodes', seasonNumber ? `(S${seasonNumber})` : '(all)', ':', episodes.length);
       return episodes;
     } catch (error) {
-      console.error('[AnimeFire] Episodes error:', error);
+      console.error('[Provider] Episodes error:', error);
       return [];
     }
   }
@@ -161,25 +156,20 @@ export class AnimeFireProvider implements AnimeProvider {
         status: item.status,
       }));
 
-      console.log('[AnimeFire] Recommendations:', recs.length);
       return recs;
     } catch (error) {
-      console.error('[AnimeFire] Recommendations error:', error);
+      console.error('[Provider] Recommendations error:', error);
       return [];
     }
   }
 
   async getEpisodeStream(episodeId: string): Promise<EpisodeStream | null> {
     try {
-      console.log('[AnimeFire] Episode stream:', episodeId);
       const json = await apiGet<any>(`/episode/${episodeId}`);
       const data = json.data;
       if (!data) {
-        console.error('[AnimeFire] No episode data for:', episodeId);
         return null;
       }
-
-      console.log('[AnimeFire] Raw streams:', JSON.stringify(data.streams?.map((s: any) => ({ audio: s.audio, url: s.url?.substring(0, 80), is_offline: s.is_offline }))));
 
       const streams = (data.streams || [])
         .filter((s: any) => s.url && !s.is_offline)
@@ -189,8 +179,6 @@ export class AnimeFireProvider implements AnimeProvider {
           qualities: Array.isArray(s.qualities) ? s.qualities.join(' ') : (s.qualities || ''),
           isMtl: s.is_mtl || false,
         }));
-
-      console.log('[AnimeFire] Filtered streams:', streams.length);
 
       return {
         episodeId: data.id,
@@ -207,7 +195,7 @@ export class AnimeFireProvider implements AnimeProvider {
         } : undefined,
       };
     } catch (error) {
-      console.error('[AnimeFire] Episode stream error:', error);
+      console.error('[Provider] Episode stream error:', error);
       return null;
     }
   }
