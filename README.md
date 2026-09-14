@@ -175,6 +175,4 @@ Este projeto está licenciado sob a [GNU General Public License v3.0](LICENSE).
 - **[Electron](https://www.electronjs.org/)** — Framework desktop
 - **[shadcn/ui](https://ui.shadcn.com/)** — Componentes UI
 
----
 
-Feito com 💜 para a comunidade de anime brasileira
