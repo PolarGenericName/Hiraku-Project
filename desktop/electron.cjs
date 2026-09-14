@@ -97,7 +97,7 @@ function createWindow() {
   });
 
   const devUrl = 'http://localhost:3000';
-  const prodUrl = `file://${path.join(__dirname, 'dist', 'public', 'index.html')}`;
+  const prodUrl = `file://${path.join(__dirname, '..', 'dist', 'public', 'index.html')}`;
   const loadUrl = process.env.ELECTRON_DEV === '1' ? devUrl : prodUrl;
 
   console.log('[Electron] Loading:', loadUrl);
