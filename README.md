@@ -24,8 +24,7 @@ O **Hiraku** é um aplicativo de desktop para assistir animes. Ele reúne catál
 2. [Instalação](#download)
 3. [Atalhos do Player](#atalhos-do-player)
 4. [Screenshots](#screenshots)
-5. [Créditos](#créditos)
-6. [Licença](#licença)
+5. [Licença](#licença)
 
 ## Características
 
