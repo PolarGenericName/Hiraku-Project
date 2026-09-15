@@ -421,7 +421,7 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top bar */}
-        <div className="absolute top-0 left-0 right-0 p-5 flex items-start justify-between">
+        <div className="absolute top-10 left-0 right-0 p-5 flex items-start justify-between">
           <button
             onClick={handleClose}
             className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200 text-white hover:scale-110"

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates, getTrendingAnime, getPopularAnime, getUpcomingAnime, getSeasonalAnime } from '@/shared/lib/anilist';
 import { batchCheckAvailability } from '@/providers';
 import { Loader2, X, SlidersHorizontal, Bookmark } from 'lucide-react';
@@ -32,6 +32,7 @@ const GENRE_VALUES = [
 
 export default function Search() {
   const [location, setLocation] = useLocation();
+  const searchString = useSearch();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,7 +55,7 @@ export default function Search() {
 
   // Parse URL params and search
   useEffect(() => {
-    const params = new URLSearchParams(location.split('?')[1] || '');
+    const params = new URLSearchParams(searchString);
     const q = params.get('q');
     const season = params.get('season');
     const year = params.get('year');
@@ -91,7 +92,10 @@ export default function Search() {
       }
     }
     setFilters(newFilters);
-  }, [location]);
+    if (Object.values(newFilters).some(Boolean)) {
+      setShowFilters(true);
+    }
+  }, [searchString]);
 
   // Load default animes on mount
   useEffect(() => {

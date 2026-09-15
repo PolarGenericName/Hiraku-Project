@@ -45,7 +45,7 @@ export default function TitleBar() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[200] h-8 flex items-center justify-between bg-black/95 backdrop-blur-sm select-none"
+      className="fixed top-0 left-0 right-0 z-[400] h-8 flex items-center justify-between bg-black/95 backdrop-blur-sm select-none"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* App Title */}

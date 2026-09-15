@@ -3,6 +3,8 @@ import { createServer } from "http";
 import path from "path";
 import fs from "fs";
 
+const serverDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+
 const ANILIST_API = "https://graphql.anilist.co";
 
 // ── Security Constants ──────────────────────────────────────────────────────
@@ -122,7 +124,7 @@ async function startServer() {
   });
 
   // ── Static files (production UI) ────────────────────────────────────────
-  const staticDir = path.join(__dirname, "public");
+  const staticDir = path.join(serverDir, "public");
   if (fs.existsSync(staticDir)) {
     app.use(express.static(staticDir));
   }
@@ -452,7 +454,7 @@ async function startServer() {
   });
 
   // ── SPA fallback ─────────────────────────────────────────────────────────
-  const indexPath = path.join(__dirname, "public", "index.html");
+  const indexPath = path.join(serverDir, "public", "index.html");
   if (fs.existsSync(indexPath)) {
     app.get("*", (req, res) => {
       if (req.path.startsWith("/api") || req.path.startsWith("/stream") || req.path.startsWith("/i")) {
