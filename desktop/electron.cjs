@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const { initUpdater } = require('./updater.cjs');
 let Client;
 try {
   Client = require('discord-rpc').Client;
@@ -14,6 +15,12 @@ let mainWindow;
 let rpc = null;
 let rpcReady = false;
 let serverProcess = null;
+
+// ── IPC sender validation ────────────────────────────────────────────────────
+function isTrustedSender(event) {
+  if (!mainWindow) return false;
+  return event.sender === mainWindow.webContents;
+}
 
 // ── Start Express server in production ────────────────────────────────────────
 function startServer() {
@@ -37,6 +44,13 @@ function startServer() {
 // ── Discord RPC ──────────────────────────────────────────────────────────────
 async function initDiscord() {
   if (!Client) return;
+
+  if (rpc) {
+    try { rpc.destroy(); } catch {}
+    rpc = null;
+    rpcReady = false;
+  }
+
   rpc = new Client({ transport: 'ipc' });
 
   rpc.on('ready', () => {
@@ -58,7 +72,8 @@ async function initDiscord() {
   }
 }
 
-ipcMain.handle('discord-set-activity', (_, activity) => {
+ipcMain.handle('discord-set-activity', (event, activity) => {
+  if (!isTrustedSender(event)) return false;
   if (!rpc || !rpcReady) return false;
   try {
     const pid = process.pid;
@@ -93,7 +108,8 @@ ipcMain.handle('discord-set-activity', (_, activity) => {
   }
 });
 
-ipcMain.handle('discord-clear-activity', () => {
+ipcMain.handle('discord-clear-activity', (event) => {
+  if (!isTrustedSender(event)) return false;
   if (!rpc || !rpcReady) return false;
   try {
     rpc.clearActivity();
@@ -118,6 +134,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
       preload: path.join(__dirname, 'preload.cjs'),
     },
     show: false,
@@ -140,8 +157,20 @@ function createWindow() {
   });
 
   // Restrict navigation to prevent XSS-based redirects
-  mainWindow.webContents.on('will-navigate', (e) => {
-    e.preventDefault();
+  // Allow same-origin reloads (ErrorBoundary recovery), block everything else
+  mainWindow.webContents.on('will-navigate', (e, url) => {
+    const allowed = url.startsWith('http://localhost:') || url.startsWith('http://127.0.0.1:') || url.startsWith('file://');
+    if (!allowed) {
+      e.preventDefault();
+    }
+  });
+
+  // Block redirects (SSRF / open redirect protection)
+  mainWindow.webContents.on('will-redirect', (e, url) => {
+    const allowed = url.startsWith('http://localhost:') || url.startsWith('http://127.0.0.1:') || url.startsWith('file://');
+    if (!allowed) {
+      e.preventDefault();
+    }
   });
 
   // Block new windows/popups
@@ -165,11 +194,13 @@ function createWindow() {
 }
 
 // ── IPC: Window Controls ─────────────────────────────────────────────────────
-ipcMain.handle('window-minimize', () => {
+ipcMain.handle('window-minimize', (event) => {
+  if (!isTrustedSender(event)) return;
   mainWindow?.minimize();
 });
 
-ipcMain.handle('window-maximize', () => {
+ipcMain.handle('window-maximize', (event) => {
+  if (!isTrustedSender(event)) return;
   if (mainWindow?.isMaximized()) {
     mainWindow.unmaximize();
   } else {
@@ -177,21 +208,37 @@ ipcMain.handle('window-maximize', () => {
   }
 });
 
-ipcMain.handle('window-close', () => {
+ipcMain.handle('window-close', (event) => {
+  if (!isTrustedSender(event)) return;
   mainWindow?.close();
 });
 
-ipcMain.handle('window-is-maximized', () => {
+ipcMain.handle('window-is-maximized', (event) => {
+  if (!isTrustedSender(event)) return false;
   return mainWindow?.isMaximized() ?? false;
 });
 
 // ── App ──────────────────────────────────────────────────────────────────────
-app.whenReady().then(async () => {
-  app.setName('Hiraku');
-  await startServer();
-  createWindow();
-  initDiscord();
-});
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+
+  app.whenReady().then(async () => {
+    app.setName('Hiraku');
+    await startServer();
+    createWindow();
+    initDiscord();
+    if (mainWindow) initUpdater(mainWindow);
+  });
+}
 
 app.on('window-all-closed', () => {
   if (rpc) {

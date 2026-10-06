@@ -6,6 +6,8 @@
 dist/
 build/
 release/
+release-arm64/
+release-linux/
 *.dist
 
 # Environment variables

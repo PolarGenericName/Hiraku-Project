@@ -51,6 +51,7 @@ function setCorsHeaders(req: express.Request, res: express.Response) {
   if (ALLOWED_CORS_ORIGINS.some(o => origin === o || (o === "file://" && origin.startsWith("file://")))) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
+  res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
@@ -105,6 +106,7 @@ async function fetchAniListTrailer(anilistId: number) {
 
 async function startServer() {
   const app = express();
+  app.disable('x-powered-by');
   app.use(express.json({ limit: "1mb" }));
   const server = createServer(app);
 
@@ -126,6 +128,13 @@ async function startServer() {
   // ── Static files (production UI) ────────────────────────────────────────
   const staticDir = path.join(serverDir, "public");
   if (fs.existsSync(staticDir)) {
+    app.use((_req, res, next) => {
+      res.setHeader(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; media-src 'self' blob:; connect-src 'self' https://graphql.anilist.co; font-src 'self' data:; object-src 'none'; frame-src https://www.youtube.com https://www.youtube-nocookie.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      );
+      next();
+    });
     app.use(express.static(staticDir));
   }
 
@@ -251,168 +260,35 @@ async function startServer() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
 
-      const response = await fetch(targetUrl, {
-        signal: controller.signal,
-        method: req.method,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          "Accept": "*/*",
-          "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-          "Origin": "https://animefire.io",
-          "Referer": "https://animefire.io/",
-        },
-      });
+      try {
+        const response = await fetch(targetUrl, {
+          signal: controller.signal,
+          method: req.method,
+          redirect: "error",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Origin": "https://animefire.one",
+            "Referer": "https://animefire.one/",
+          },
+        });
 
-      clearTimeout(timeout);
+        clearTimeout(timeout);
 
-      if (!response.ok) {
-        return res.status(response.status).json({ error: `Upstream returned ${response.status}` });
-      }
-
-      const contentType = response.headers.get("content-type") || "";
-      res.setHeader("Content-Type", contentType || "application/octet-stream");
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        return res.status(500).json({ error: "No response body" });
-      }
-
-      const chunks: Buffer[] = [];
-      let totalSize = 0;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        totalSize += value.length;
-        if (totalSize > MAX_PROXY_RESPONSE_SIZE) {
-          reader.cancel();
-          return res.status(413).json({ error: "Response too large" });
-        }
-        chunks.push(Buffer.from(value));
-      }
-
-      res.send(Buffer.concat(chunks));
-    } catch {
-      res.status(500).json({ error: "Stream proxy error" });
-    }
-  });
-
-  // ── Image proxy (akumast.net /i/) ────────────────────────────────────────
-  app.use("/i", async (req, res) => {
-    const targetUrl = `https://akumast.net/i${req.url}`;
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
-
-      const response = await fetch(targetUrl, {
-        signal: controller.signal,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
-          "Referer": "https://animefire.io/",
-        },
-      });
-
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        return res.status(response.status).json({ error: `Upstream returned ${response.status}` });
-      }
-
-      const contentType = response.headers.get("content-type") || "image/jpeg";
-      res.setHeader("Content-Type", contentType);
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        return res.status(500).json({ error: "No response body" });
-      }
-
-      const chunks: Buffer[] = [];
-      let totalSize = 0;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        totalSize += value.length;
-        if (totalSize > MAX_PROXY_RESPONSE_SIZE) {
-          reader.cancel();
-          return res.status(413).json({ error: "Response too large" });
-        }
-        chunks.push(Buffer.from(value));
-      }
-
-      res.send(Buffer.concat(chunks));
-    } catch {
-      res.status(500).json({ error: "Image proxy error" });
-    }
-  });
-
-  // ── CORS proxy ────────────────────────────────────────────────────────
-  const ALLOWED_PROXY_HOSTS = ["api.animefire.io"];
-  app.get("/api/proxy", async (req, res) => {
-    const targetUrl = req.query.url as string;
-    if (!targetUrl) {
-      return res.status(400).json({ error: "Missing url parameter" });
-    }
-
-    setCorsHeaders(req, res);
-
-    // Validate URL: correct host + no path traversal
-    let parsedUrl: URL;
-    try {
-      parsedUrl = new URL(targetUrl);
-    } catch {
-      return res.status(400).json({ error: "Invalid URL" });
-    }
-
-    if (!ALLOWED_PROXY_HOSTS.includes(parsedUrl.hostname)) {
-      return res.status(403).json({ error: "Host not allowed" });
-    }
-
-    // Block path traversal attempts
-    const decodedPath = decodeURIComponent(parsedUrl.pathname);
-    if (decodedPath.includes("..") || decodedPath.includes("//")) {
-      return res.status(403).json({ error: "Path not allowed" });
-    }
-
-    // Only allow safe path patterns
-    if (!/^\/(animes|anime|episode)\//.test(decodedPath)) {
-      return res.status(403).json({ error: "Path not allowed" });
-    }
-
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
-
-      const response = await fetch(targetUrl, {
-        signal: controller.signal,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "*/*",
-          "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-          "Origin": "https://animefire.io",
-          "Referer": "https://animefire.io/",
-        },
-      });
-
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        return res.status(response.status).json({ error: `Upstream returned ${response.status}` });
-      }
-
-      const contentType = response.headers.get("content-type") || "";
-
-      // Stream binary data with size limit
-      if (contentType.includes("dash") || contentType.includes("mp4") || contentType.includes("octet-stream") || contentType.includes("xml") || targetUrl.includes(".mpd") || targetUrl.includes(".m4s") || targetUrl.includes("/i/")) {
-        const contentLength = parseInt(response.headers.get("content-length") || "0", 10);
-        if (contentLength > MAX_PROXY_RESPONSE_SIZE) {
-          return res.status(413).json({ error: "Response too large" });
+        if (!response.ok) {
+          return res.status(response.status).json({ error: `Upstream returned ${response.status}` });
         }
 
-        res.setHeader("Content-Type", contentType || "application/octet-stream");
+        const contentType = response.headers.get("content-type") || "";
+        const forcedType = contentType.includes("mpegurl")
+          ? "application/vnd.apple.mpegurl"
+          : contentType.includes("application/vnd.apple") || contentType.includes("dash")
+            ? contentType
+            : "application/octet-stream";
+        res.setHeader("Content-Type", forcedType);
+        res.setHeader("X-Content-Type-Options", "nosniff");
 
-        // Stream with size tracking
         const reader = response.body?.getReader();
         if (!reader) {
           return res.status(500).json({ error: "No response body" });
@@ -433,21 +309,185 @@ async function startServer() {
         }
 
         res.send(Buffer.concat(chunks));
-        return;
+      } finally {
+        clearTimeout(timeout);
       }
+    } catch {
+      res.status(500).json({ error: "Stream proxy error" });
+    }
+  });
 
-      // Text/JSON responses with size limit
-      const body = await response.text();
-      if (body.length > MAX_JSON_RESPONSE_SIZE) {
-        return res.status(413).json({ error: "Response too large" });
+  // ── Image proxy (akumast.net /i/) ────────────────────────────────────────
+  app.use("/i", async (req, res) => {
+    const targetUrl = `https://akumast.net/i${req.url}`;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      try {
+        const response = await fetch(targetUrl, {
+          signal: controller.signal,
+          redirect: "error",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+            "Referer": "https://animefire.one/",
+          },
+        });
+
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+          return res.status(response.status).json({ error: `Upstream returned ${response.status}` });
+        }
+
+        const contentType = response.headers.get("content-type") || "";
+        const safeType = contentType.startsWith("image/") ? contentType : "image/jpeg";
+        res.setHeader("Content-Type", safeType);
+        res.setHeader("X-Content-Type-Options", "nosniff");
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          return res.status(500).json({ error: "No response body" });
+        }
+
+        const chunks: Buffer[] = [];
+        let totalSize = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          totalSize += value.length;
+          if (totalSize > MAX_PROXY_RESPONSE_SIZE) {
+            reader.cancel();
+            return res.status(413).json({ error: "Response too large" });
+          }
+          chunks.push(Buffer.from(value));
+        }
+
+        res.send(Buffer.concat(chunks));
+      } finally {
+        clearTimeout(timeout);
       }
+    } catch {
+      res.status(500).json({ error: "Image proxy error" });
+    }
+  });
 
-      if (contentType.includes("json")) {
+  // ── CORS proxy ────────────────────────────────────────────────────────
+  const ALLOWED_PROXY_HOSTS = ["api.animefire.one"];
+  app.get("/api/proxy", async (req, res) => {
+    const targetUrl = req.query.url as string;
+    if (!targetUrl) {
+      return res.status(400).json({ error: "Missing url parameter" });
+    }
+
+    setCorsHeaders(req, res);
+
+    // Validate URL: correct host + no path traversal
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(targetUrl);
+    } catch {
+      return res.status(400).json({ error: "Invalid URL" });
+    }
+
+    if (!ALLOWED_PROXY_HOSTS.includes(parsedUrl.hostname)) {
+      return res.status(403).json({ error: "Host not allowed" });
+    }
+
+    if (parsedUrl.protocol !== 'https:') {
+      return res.status(400).json({ error: "Only https URLs allowed" });
+    }
+
+    // Block path traversal attempts
+    let decodedPath: string;
+    try {
+      decodedPath = decodeURIComponent(parsedUrl.pathname);
+    } catch {
+      return res.status(400).json({ error: "Invalid URL path" });
+    }
+    if (decodedPath.includes("..") || decodedPath.includes("//")) {
+      return res.status(403).json({ error: "Path not allowed" });
+    }
+
+    // Only allow safe path patterns
+    if (!/^\/(animes|anime|episode)\//.test(decodedPath)) {
+      return res.status(403).json({ error: "Path not allowed" });
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+
+      try {
+        const response = await fetch(targetUrl, {
+          signal: controller.signal,
+          redirect: "error",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Origin": "https://animefire.one",
+            "Referer": "https://animefire.one/",
+          },
+        });
+
+        clearTimeout(timeout);
+
+        if (!response.ok) {
+          return res.status(response.status).json({ error: `Upstream returned ${response.status}` });
+        }
+
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        const contentType = response.headers.get("content-type") || "";
+
+        // Stream binary data with size limit
+        if (contentType.includes("dash") || contentType.includes("mp4") || contentType.includes("octet-stream") || contentType.includes("xml") || targetUrl.includes(".mpd") || targetUrl.includes(".m4s") || targetUrl.includes("/i/")) {
+          const contentLength = parseInt(response.headers.get("content-length") || "0", 10);
+          if (contentLength > MAX_PROXY_RESPONSE_SIZE) {
+            return res.status(413).json({ error: "Response too large" });
+          }
+
+          res.setHeader("Content-Type", contentType || "application/octet-stream");
+
+          // Stream with size tracking
+          const reader = response.body?.getReader();
+          if (!reader) {
+            return res.status(500).json({ error: "No response body" });
+          }
+
+          const chunks: Buffer[] = [];
+          let totalSize = 0;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            totalSize += value.length;
+            if (totalSize > MAX_PROXY_RESPONSE_SIZE) {
+              reader.cancel();
+              return res.status(413).json({ error: "Response too large" });
+            }
+            chunks.push(Buffer.from(value));
+          }
+
+          res.send(Buffer.concat(chunks));
+          return;
+        }
+
+        // Text/JSON responses with size limit
+        const body = await response.text();
+        if (body.length > MAX_JSON_RESPONSE_SIZE) {
+          return res.status(413).json({ error: "Response too large" });
+        }
+
+        // Force JSON content-type — this endpoint is only used for API data,
+        // never serve upstream HTML at the app origin
         res.setHeader("Content-Type", "application/json; charset=utf-8");
-      } else {
-        res.setHeader("Content-Type", contentType || "text/html; charset=utf-8");
+        res.send(body);
+      } finally {
+        clearTimeout(timeout);
       }
-      res.send(body);
     } catch {
       res.status(500).json({ error: "Internal server error" });
     }
@@ -469,8 +509,8 @@ async function startServer() {
   }
 
   const port = 3001;
-  server.listen(port, () => {
-    console.log(`[Server] Running on http://localhost:${port}/`);
+  server.listen(port, '127.0.0.1', () => {
+    console.log(`[Server] Running on http://127.0.0.1:${port}/`);
   });
 }
 

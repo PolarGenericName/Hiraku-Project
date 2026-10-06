@@ -1,6 +1,6 @@
 {
   "name": "hiraku",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Aplicativo de transmissão de anime",
   "author": "Hiraku Project",
   "type": "module",
@@ -10,14 +10,14 @@
     "dev": "concurrently \"tsx server/index.ts\" \"vite --host\"",
     "dev:server": "tsx server/index.ts",
     "dev:client": "vite --host",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs",
+    "build": "tsc --noEmit && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs",
     "start": "cross-env NODE_ENV=production node dist/index.cjs",
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
     "electron": "concurrently \"tsx server/index.ts\" \"vite --host\" \"cross-env ELECTRON_DEV=1 electron .\"",
-    "electron:build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --win --arm64",
-    "electron:build:linux": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --linux",
-    "dist": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --win --arm64 --linux"
+    "electron:build": "tsc --noEmit && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --win --arm64",
+    "electron:build:linux": "tsc --noEmit && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --linux",
+    "dist": "tsc --noEmit && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --win --arm64 --linux"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",
@@ -25,6 +25,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "discord-rpc": "^4.0.1",
+    "electron-updater": "^6.8.9",
     "express": "^4.21.2",
     "hls.js": "^1.7.3",
     "lucide-react": "^0.453.0",

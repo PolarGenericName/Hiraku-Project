@@ -13,7 +13,7 @@ import type {
   EpisodeStream,
 } from './types';
 
-const API_BASE = 'https://api.animefire.io';
+const API_BASE = 'https://api.animefire.one';
 const PROXY_BASE = '/api/proxy';
 const API_TIMEOUT = 20000;
 
@@ -27,7 +27,7 @@ async function apiGet<T>(path: string): Promise<T> {
 export class AnimeFireProvider implements AnimeProvider {
   id = 'animefire';
   name = 'AnimeFire';
-  baseUrl = 'https://animefire.plus';
+  baseUrl = 'https://animefire.one';
 
   async search(query: string): Promise<AnimeResult[]> {
     try {
@@ -36,7 +36,7 @@ export class AnimeFireProvider implements AnimeProvider {
 
       const results: AnimeResult[] = items.map((item: any) => ({
         id: item.id,
-        title: item.title,
+        title: item.titles?.BR || item.titles?.EN || item.title || '',
         thumbnail: item.poster_src,
         type: 'TV',
         year: item.published_at ? parseInt(item.published_at.substring(0, 4)) : undefined,
@@ -150,7 +150,7 @@ export class AnimeFireProvider implements AnimeProvider {
 
       const recs: Recommendation[] = items.map((item: any) => ({
         id: item.id,
-        title: item.title,
+        title: item.titles?.BR || item.titles?.EN || item.title || '',
         thumbnail: item.poster_src,
         audio: item.audio,
         status: item.status,

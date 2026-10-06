@@ -40,7 +40,20 @@ function loadAccount(): AccountData | null {
   try {
     const raw = localStorage.getItem(ACCOUNT_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (typeof parsed.name !== 'string') return null;
+    return {
+      name: parsed.name,
+      avatar: typeof parsed.avatar === 'string' ? parsed.avatar : '',
+      history: Array.isArray(parsed.history)
+        ? parsed.history.filter((h: any) => h && typeof h.animeId === 'string' && typeof h.episodeId === 'string')
+        : [],
+      savedAnimes: Array.isArray(parsed.savedAnimes)
+        ? parsed.savedAnimes.filter((id: any) => typeof id === 'string')
+        : [],
+      createdAt: typeof parsed.createdAt === 'number' ? parsed.createdAt : Date.now(),
+    };
   } catch {
     return null;
   }

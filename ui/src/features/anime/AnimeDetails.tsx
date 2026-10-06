@@ -42,7 +42,10 @@ export default function AnimeDetails() {
 
   // Check for trailer availability
   const hasTrailer = anime?.trailer?.site === 'youtube';
-  const trailerVideoId = hasTrailer ? anime!.trailer!.id : fallbackTrailer?.videoId;
+  const rawTrailerId = hasTrailer ? anime!.trailer!.id : fallbackTrailer?.videoId;
+  const isValidVideoId = (id: string | undefined): id is string =>
+    !!id && /^[A-Za-z0-9_-]{6,20}$/.test(id);
+  const trailerVideoId = isValidVideoId(rawTrailerId) ? rawTrailerId : undefined;
 
   // Drag-to-scroll for recommendations
   const recScrollRef = useRef<HTMLDivElement>(null);
@@ -146,6 +149,16 @@ export default function AnimeDetails() {
     setSelectedEpisode(null);
   }, [providerSlug]);
 
+  // Reset player state when navigating to a different anime
+  useEffect(() => {
+    setPlayerStream(null);
+    setLoadingPlayer(false);
+    setSelectedEpisode(null);
+    setEpisodeQuery('');
+    setFallbackTrailer(null);
+    setShowTrailer(false);
+  }, [animeId]);
+
   // Auto-play episode from history (URL query params ?episode=xxx&season=N)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -192,15 +205,20 @@ export default function AnimeDetails() {
   const handleNextEpisode = async () => {
     if (!playerStream?.nextEpisode) return;
     const next = playerStream.nextEpisode;
+    const requestId = ++episodeRequestRef.current;
     setSelectedEpisode(String(next.number));
     setLoadingPlayer(true);
     try {
       const stream = await getEpisodeStream(next.id);
-      if (stream) setPlayerStream(stream);
+      if (requestId === episodeRequestRef.current) {
+        if (stream) setPlayerStream(stream);
+      }
     } catch (err) {
-      console.error('Failed to load next episode:', err);
+      console.error('Failed to load stream:', err);
     } finally {
-      setLoadingPlayer(false);
+      if (requestId === episodeRequestRef.current) {
+        setLoadingPlayer(false);
+      }
     }
   };
 
@@ -311,7 +329,7 @@ export default function AnimeDetails() {
                 </button>
               )}
 
-              {(hasTrailer || !loadingTrailer) && (
+              {(hasTrailer || fallbackTrailer || loadingTrailer) && (
                 <button
                   onClick={() => {
                     if (hasTrailer) {
@@ -414,7 +432,7 @@ export default function AnimeDetails() {
             {/* Synopsis */}
             {anime.description && (
               <p className="text-gray-300 leading-relaxed text-sm max-w-3xl line-clamp-3">
-                {anime.description.replace(/<[^>]*>/g, '')}
+                {anime.description.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')}
               </p>
             )}
           </div>
@@ -634,6 +652,7 @@ export default function AnimeDetails() {
                 src={`https://www.youtube.com/embed/${trailerVideoId}?autoplay=1&rel=0`}
                 title={`Trailer - ${anime?.title?.english || anime?.title?.romaji}`}
                 className="w-full h-full"
+                sandbox="allow-scripts allow-same-origin allow-presentation"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />

@@ -41,7 +41,11 @@ function getAll(): ProgressData {
 }
 
 function saveAll(data: ProgressData) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // localStorage full or unavailable — progress won't persist
+  }
 }
 
 /** Salva progresso de um episódio */

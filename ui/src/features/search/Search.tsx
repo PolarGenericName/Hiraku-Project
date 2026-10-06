@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLocation, useSearch } from 'wouter';
 import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates, getTrendingAnime, getPopularAnime, getUpcomingAnime, getSeasonalAnime } from '@/shared/lib/anilist';
 import { batchCheckAvailability } from '@/providers';
@@ -43,6 +43,9 @@ export default function Search() {
   const [hasSearched, setHasSearched] = useState(false);
 
   const { toggleSavedAnime, isSaved } = useAccount();
+
+  // Request ID to prevent stale responses from overwriting newer results
+  const searchRequestIdRef = useRef(0);
 
   // Default animes (mixed trending + popular)
   const [defaultAnimes, setDefaultAnimes] = useState<any[]>([]);
@@ -139,10 +142,13 @@ export default function Search() {
         return;
       }
 
+      const requestId = ++searchRequestIdRef.current;
+
       try {
         setLoading(true);
         setHasSearched(true);
         const data = await searchAniList(query.trim() || undefined, filters);
+        if (requestId !== searchRequestIdRef.current) return;
         const filtered = filterSeasonDuplicates(data);
 
         // Check availability on the streaming provider before showing results
@@ -159,6 +165,7 @@ export default function Search() {
               status: anime.status,
             }));
             const available = await batchCheckAvailability(animesToCheck);
+            if (requestId !== searchRequestIdRef.current) return;
             setAvailableIds(available);
 
             // Filter to only show available anime
@@ -173,9 +180,9 @@ export default function Search() {
             }
           } catch (err) {
             console.error('Availability check error:', err);
-            setResults(filtered);
+            if (requestId === searchRequestIdRef.current) setResults(filtered);
           } finally {
-            setCheckingAvailability(false);
+            if (requestId === searchRequestIdRef.current) setCheckingAvailability(false);
           }
         } else {
           setResults(filtered);
@@ -183,7 +190,7 @@ export default function Search() {
       } catch (err) {
         console.error('Search error:', err);
       } finally {
-        setLoading(false);
+        if (requestId === searchRequestIdRef.current) setLoading(false);
       }
     };
 

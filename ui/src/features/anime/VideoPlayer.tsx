@@ -53,19 +53,6 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
   const legStream = stream.streams.find(s => s.audio === 'legendado');
   const currentStream = (selectedAudio === 'dublado' ? dubStream : legStream) || dubStream || legStream || stream.streams[0];
 
-  if (!currentStream) {
-    return (
-      <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-white text-lg mb-4">Nenhuma stream disponível</p>
-          <button onClick={onClose} className="px-4 py-2 bg-white/10 rounded-lg text-white hover:bg-white/20">
-            Fechar
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -173,6 +160,8 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
     video.addEventListener('ended', onEnded);
 
     // Initialize HLS.js
+    let onSafariLoadedMetadata: (() => void) | null = null;
+
     if (Hls.isSupported()) {
       const hls = new Hls({
         startLevel: -1, // auto
@@ -197,7 +186,10 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
           hls.currentLevel = highest;
           setSelectedQuality(highest);
         }
-        video.play().catch(() => {});
+        video.play().catch(() => {
+          setIsBuffering(false);
+          setIsPlaying(false);
+        });
       });
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -213,9 +205,13 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       // Safari native HLS
       video.src = proxyUrl;
-      video.addEventListener('loadedmetadata', () => {
-        video.play().catch(() => {});
-      });
+      onSafariLoadedMetadata = () => {
+        video.play().catch(() => {
+          setIsBuffering(false);
+          setIsPlaying(false);
+        });
+      };
+      video.addEventListener('loadedmetadata', onSafariLoadedMetadata);
     }
 
     return () => {
@@ -226,10 +222,14 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
       video.removeEventListener('waiting', onWaiting);
       video.removeEventListener('canplay', onCanPlay);
       video.removeEventListener('ended', onEnded);
+      if (onSafariLoadedMetadata) {
+        video.removeEventListener('loadedmetadata', onSafariLoadedMetadata);
+      }
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
+      if (volumeHoverTimer.current) clearTimeout(volumeHoverTimer.current);
       window.electronAPI?.clearActivity();
     };
   }, [selectedAudio, currentStream?.url]);
@@ -245,6 +245,12 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
       hls.currentLevel = selectedQuality;
     }
   }, [selectedQuality]);
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
 
   const resetHideTimer = useCallback(() => {
     setShowControls(true);
@@ -277,6 +283,23 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
     onClose();
   }, [saveCurrentProgress, onClose]);
 
+  const toggleFullscreen = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      container.requestFullscreen().catch(() => {});
+    }
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) video.play();
+    else video.pause();
+  }, []);
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -284,7 +307,11 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
         else if (showLanguages) setShowLanguages(false);
         else if (showSpeedMenu) setShowSpeedMenu(false);
         else if (showQualityMenu) setShowQualityMenu(false);
-        else handleClose();
+        else if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else {
+          handleClose();
+        }
       }
       if (e.key === ' ' || e.key === 'k') { e.preventDefault(); togglePlay(); }
       if (e.key === 'f') toggleFullscreen();
@@ -297,39 +324,21 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [showSettings, showLanguages, showSpeedMenu, showQualityMenu, onClose, resetHideTimer]);
-
-  const toggleFullscreen = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-      setIsFullscreen(false);
-    } else {
-      container.requestFullscreen();
-      setIsFullscreen(true);
-    }
-  }, []);
-
-  const togglePlay = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (video.paused) video.play();
-    else video.pause();
-  }, []);
+  }, [showSettings, showLanguages, showSpeedMenu, showQualityMenu, handleClose, togglePlay, toggleFullscreen, resetHideTimer]);
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const video = videoRef.current;
     const bar = progressRef.current;
-    if (!video || !bar) return;
+    if (!video || !bar || !Number.isFinite(video.duration)) return;
     const rect = bar.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
-    video.currentTime = percent * duration;
+    video.currentTime = percent * video.duration;
   };
 
   const skip = (seconds: number) => {
     const video = videoRef.current;
-    if (video) video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
+    if (!video || !Number.isFinite(video.duration)) return;
+    video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
   };
 
   const adjustVolume = (delta: number) => {
@@ -391,6 +400,19 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
     }
     togglePlay();
   }, [showControls, resetHideTimer, togglePlay]);
+
+  if (!currentStream) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white text-lg mb-4">Nenhuma stream disponível</p>
+          <button onClick={onClose} className="px-4 py-2 bg-white/10 rounded-lg text-white hover:bg-white/20">
+            Fechar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

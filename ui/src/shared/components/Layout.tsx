@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { useAccount } from "@/contexts/AccountContext";
 import TitleBar from "@/features/player/TitleBar";
+import UpdateNotification from "./UpdateNotification";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -118,6 +119,7 @@ export default function Layout({ children }: LayoutProps) {
       <main className={`w-full ${isElectron ? 'pt-28' : 'pt-20'}`}>
         {children}
       </main>
+      <UpdateNotification />
     </div>
   );
 }

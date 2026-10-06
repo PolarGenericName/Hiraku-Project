@@ -1,29 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Minus, Square, X, Maximize2 } from 'lucide-react';
 
-declare global {
-  interface Window {
-    electronAPI?: {
-      minimize: () => Promise<void>;
-      maximize: () => Promise<void>;
-      close: () => Promise<void>;
-      isMaximized: () => Promise<boolean>;
-      onStateChanged: (callback: (state: string) => void) => void;
-      setActivity: (activity: {
-        details?: string;
-        state?: string;
-        startTimestamp?: number;
-        largeImageKey?: string;
-        largeImageText?: string;
-        smallImageKey?: string;
-        smallImageText?: string;
-        buttons?: { label: string; url: string }[];
-      }) => Promise<boolean>;
-      clearActivity: () => Promise<boolean>;
-    };
-  }
-}
-
 export default function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false);
   const isElectron = !!window.electronAPI;
@@ -32,13 +9,10 @@ export default function TitleBar() {
     if (!isElectron) return;
 
     window.electronAPI!.isMaximized().then(setIsMaximized);
-    const handler = (state: string) => {
+    const unsubscribe = window.electronAPI!.onStateChanged((state) => {
       setIsMaximized(state === 'maximized');
-    };
-    window.electronAPI!.onStateChanged(handler);
-    return () => {
-      // Note: preload doesn't expose unsubscribe — listener persists but is cheap
-    };
+    });
+    return unsubscribe;
   }, [isElectron]);
 
   if (!isElectron) return null;

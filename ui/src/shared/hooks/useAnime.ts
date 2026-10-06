@@ -148,6 +148,9 @@ export function useAnimeDetails(id: number | null): UseAnimeDetailsResult {
 
   useEffect(() => {
     if (!id) {
+      setAnime(null);
+      setProviderSlug(null);
+      setProviderDetails(null);
       setLoading(false);
       setError(null);
       return;
@@ -158,6 +161,8 @@ export function useAnimeDetails(id: number | null): UseAnimeDetailsResult {
       try {
         setLoading(true);
         setError(null);
+        setProviderSlug(null);
+        setProviderDetails(null);
 
         // 1. Fetch AniList metadata
         const media = await getMediaById(id);
@@ -218,6 +223,7 @@ export function useSeasons(slug: string | null): UseSeasonsResult {
   useEffect(() => {
     if (!slug) {
       setSeasons([]);
+      setLoading(false);
       return;
     }
 
@@ -253,6 +259,7 @@ export function useEpisodes(
   useEffect(() => {
     if (!slug) {
       setEpisodes([]);
+      setLoading(false);
       return;
     }
 
@@ -285,6 +292,7 @@ export function useRecommendations(slug: string | null): { recommendations: Reco
   useEffect(() => {
     if (!slug) {
       setRecommendations([]);
+      setLoading(false);
       return;
     }
 

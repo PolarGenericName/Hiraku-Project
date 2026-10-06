@@ -24,14 +24,6 @@ function PageLoader() {
   );
 }
 
-function LazyHome() { return <Suspense fallback={<PageLoader />}><Layout><Home /></Layout></Suspense>; }
-function LazySearch() { return <Suspense fallback={<PageLoader />}><Layout><Search /></Layout></Suspense>; }
-function LazyAnimes() { return <Suspense fallback={<PageLoader />}><Layout><AnimesPage /></Layout></Suspense>; }
-function LazyFilmes() { return <Suspense fallback={<PageLoader />}><Layout><FilmesPage /></Layout></Suspense>; }
-function LazyAnimeDetails() { return <Suspense fallback={<PageLoader />}><Layout><AnimeDetails /></Layout></Suspense>; }
-function LazyProfile() { return <Suspense fallback={<PageLoader />}><Layout><Profile /></Layout></Suspense>; }
-function LazyNotFound() { return <Suspense fallback={<PageLoader />}><Layout><NotFound /></Layout></Suspense>; }
-
 const AccountSetup = lazy(() => import("./features/profile/AccountSetup"));
 
 function AppContent() {
@@ -46,16 +38,20 @@ function AppContent() {
           </Suspense>
         </div>
       )}
-      <Switch>
-        <Route path="/" component={LazyHome} />
-        <Route path="/search" component={LazySearch} />
-        <Route path="/animes" component={LazyAnimes} />
-        <Route path="/filmes" component={LazyFilmes} />
-        <Route path="/anime/:id" component={LazyAnimeDetails} />
-        <Route path="/profile" component={LazyProfile} />
-        <Route path="/404" component={LazyNotFound} />
-        <Route component={LazyNotFound} />
-      </Switch>
+      <Layout>
+        <Suspense fallback={<PageLoader />}>
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/search" component={Search} />
+            <Route path="/animes" component={AnimesPage} />
+            <Route path="/filmes" component={FilmesPage} />
+            <Route path="/anime/:id" component={AnimeDetails} />
+            <Route path="/profile" component={Profile} />
+            <Route path="/404" component={NotFound} />
+            <Route component={NotFound} />
+          </Switch>
+        </Suspense>
+      </Layout>
     </>
   );
 }
