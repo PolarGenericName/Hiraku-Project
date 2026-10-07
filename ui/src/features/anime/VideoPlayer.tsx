@@ -77,7 +77,21 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
 
     // The stream URL is an HLS manifest disguised as .jpg
     // e.g. https://akumast.net/i/.../h.jpg -> /stream/i/.../h.jpg
-    const proxyUrl = currentStream.url.replace('https://akumast.net', '/stream');
+    const rawUrl = currentStream.url;
+    const proxyUrl =
+      rawUrl === 'https://akumast.net' || rawUrl.startsWith('https://akumast.net/')
+        ? rawUrl.replace('https://akumast.net', '/stream')
+        : rawUrl.startsWith('/')
+          ? rawUrl
+          : null;
+
+    if (!proxyUrl) {
+      // External URLs are blocked by CSP media-src — fail loudly instead of spinning forever
+      console.error('[Player] Unsupported stream URL:', rawUrl);
+      setIsBuffering(false);
+      setIsPlaying(false);
+      return;
+    }
 
     let lastSaveTime = 0;
 
@@ -161,6 +175,9 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
 
     // Initialize HLS.js
     let onSafariLoadedMetadata: (() => void) | null = null;
+    let networkRetries = 0;
+    let mediaRetries = 0;
+    let networkRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
     if (Hls.isSupported()) {
       const hls = new Hls({
@@ -173,6 +190,8 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
+        networkRetries = 0;
+        mediaRetries = 0;
         const levels = data.levels.map((l, i) => ({
           height: l.height,
           width: l.width,
@@ -192,13 +211,36 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
         });
       });
 
+      hls.on(Hls.Events.FRAG_LOADED, () => {
+        networkRetries = 0;
+        mediaRetries = 0;
+      });
+
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (data.fatal) {
           console.error('[Player] HLS fatal error:', data.type, data.details);
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-            hls.startLoad();
+            // Exponential backoff instead of a hot retry loop
+            if (networkRetries >= 5) {
+              console.error('[Player] Giving up after 5 network retries');
+              setIsBuffering(false);
+              return;
+            }
+            networkRetries += 1;
+            const delay = Math.min(1000 * 2 ** (networkRetries - 1), 8000);
+            if (networkRetryTimer) clearTimeout(networkRetryTimer);
+            networkRetryTimer = setTimeout(() => hls.startLoad(), delay);
           } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            // hls.js has no internal media-recovery limit — cap it ourselves
+            if (mediaRetries >= 5) {
+              console.error('[Player] Giving up after 5 media recoveries');
+              setIsBuffering(false);
+              return;
+            }
+            mediaRetries += 1;
             hls.recoverMediaError();
+          } else {
+            setIsBuffering(false);
           }
         }
       });
@@ -215,6 +257,7 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
     }
 
     return () => {
+      if (networkRetryTimer) clearTimeout(networkRetryTimer);
       video.removeEventListener('play', onPlay);
       video.removeEventListener('pause', onPause);
       video.removeEventListener('timeupdate', onTimeUpdate);
@@ -232,7 +275,7 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
       if (volumeHoverTimer.current) clearTimeout(volumeHoverTimer.current);
       window.electronAPI?.clearActivity();
     };
-  }, [selectedAudio, currentStream?.url]);
+  }, [selectedAudio, currentStream?.url, stream, animeId, animeTitle, animeCover, animeYear, animeGenres, addToHistory]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -440,7 +483,11 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
           showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         style={{ background: 'linear-gradient(transparent 0%, transparent 50%, rgba(0,0,0,0.85) 100%)' }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          // Background click toggles playback; clicks on inner controls don't
+          if (e.target === e.currentTarget) handleVideoClick();
+        }}
       >
         {/* Top bar */}
         <div className="absolute top-10 left-0 right-0 p-5 flex items-start justify-between">
@@ -700,7 +747,10 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
 
               {stream.nextEpisode && (
                 <button
-                  onClick={onNextEpisode}
+                  onClick={() => {
+                    saveCurrentProgress();
+                    onNextEpisode?.();
+                  }}
                   className="flex items-center gap-2 px-4 py-2 rounded-full bg-transparent hover:bg-accent border border-white/20 hover:border-accent transition-all duration-200 text-white text-sm font-medium hover:text-white hover:scale-105"
                 >
                   <SkipForward size={16} />

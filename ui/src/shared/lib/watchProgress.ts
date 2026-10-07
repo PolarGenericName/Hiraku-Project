@@ -34,7 +34,31 @@ type ProgressData = Record<string, AnimeProgress>;
 function getAll(): ProgressData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+
+      const data: ProgressData = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (
+          value &&
+          typeof value === 'object' &&
+          !Array.isArray(value) &&
+          'episodes' in value &&
+          value.episodes &&
+          typeof value.episodes === 'object' &&
+          !Array.isArray(value.episodes)
+        ) {
+          const episodes: Record<string, EpisodeProgress> = {};
+          for (const [epId, ep] of Object.entries(value.episodes as Record<string, unknown>)) {
+            if (ep && typeof ep === 'object' && !Array.isArray(ep)) {
+              episodes[epId] = ep as EpisodeProgress;
+            }
+          }
+          data[key] = { ...(value as AnimeProgress), episodes };
+        }
+      }
+      return data;
   } catch {
     return {};
   }
@@ -83,7 +107,11 @@ export function getEpisodeProgress(
   episodeId: string
 ): EpisodeProgress | null {
   const data = getAll();
-  return data[animeId]?.episodes[episodeId] || null;
+  const progress = data[animeId]?.episodes[episodeId];
+  if (!progress || typeof progress !== 'object') return null;
+  if (typeof progress.currentTime !== 'number' || !Number.isFinite(progress.currentTime)) return null;
+  if (typeof progress.duration !== 'number' || !Number.isFinite(progress.duration)) return null;
+  return progress;
 }
 
 /** Retorna a posição para retomar (em segundos) */

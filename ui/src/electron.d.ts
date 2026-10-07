@@ -28,7 +28,7 @@ interface ElectronAPI {
   updateCheck: () => Promise<void>;
   updateDownload: () => Promise<void>;
   updateInstall: () => Promise<void>;
-  updateGetInfo: () => Promise<UpdateInfo | null>;
+  updateGetInfo: () => Promise<(UpdateInfo & { downloaded?: boolean }) | null>;
   onUpdateChecking: (callback: () => void) => () => void;
   onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void;
   onUpdateNotAvailable: (callback: () => void) => () => void;

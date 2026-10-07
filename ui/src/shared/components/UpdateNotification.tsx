@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, X, ArrowDownToLine, Check } from 'lucide-react';
+import { Download, X, ArrowDownToLine, Check, RefreshCw, AlertTriangle } from 'lucide-react';
 
 const isElectron = typeof window !== 'undefined' && !!window.electronAPI;
 
@@ -44,17 +44,37 @@ export default function UpdateNotification() {
       setUpdateInfo(savedInfo);
     }
 
+    // Restore the "downloaded" state if the update is ready in this process
+    api
+      .updateGetInfo()
+      .then((info) => {
+        if (info && info.downloaded) {
+          setStatus('downloaded');
+          setUpdateInfo({
+            version: info.version,
+            releaseDate: info.releaseDate ?? '',
+            releaseName: info.releaseName ?? null,
+            releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : null,
+          });
+        }
+      })
+      .catch(() => {});
+
     const unsubs = [
       api.onUpdateChecking(() => {
-        if (savedStatus !== 'available' && savedStatus !== 'downloaded') setStatus('checking');
+        const current = sessionStorage.getItem('update-status');
+        if (current !== 'available' && current !== 'downloaded') setStatus('checking');
       }),
       api.onUpdateAvailable((info) => {
-        if (dismissedVersion === info.version) {
+        if (sessionStorage.getItem('update-dismissed') === info.version) {
           setStatus('idle');
           return;
         }
         setStatus('available');
-        setUpdateInfo(info);
+        setUpdateInfo({
+          ...info,
+          releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : null,
+        });
         setIsDownloading(false);
         sessionStorage.setItem('update-status', 'available');
         sessionStorage.setItem('update-info', JSON.stringify(info));
@@ -80,15 +100,12 @@ export default function UpdateNotification() {
         sessionStorage.removeItem('update-info');
         setStatus('downloaded');
         setIsDownloading(false);
-        setTimeout(() => {
-          window.electronAPI?.updateInstall();
-        }, 1500);
       }),
     ];
 
     if (!sessionStorage.getItem('update-checked')) {
       sessionStorage.setItem('update-checked', '1');
-      api.updateCheck();
+      api.updateCheck().catch(() => {});
     }
 
     return () => {
@@ -96,11 +113,29 @@ export default function UpdateNotification() {
     };
   }, []);
 
-  if (!isElectron || status === 'idle' || status === 'error') return null;
+  if (!isElectron || status === 'idle') return null;
+
+  if (status === 'error') {
+    return (
+      <div className="fixed bottom-4 right-4 z-[200] bg-white/10 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-3 flex items-center gap-3 shadow-2xl animate-in slide-in-from-bottom-5">
+        <AlertTriangle className="w-5 h-5 text-yellow-400" />
+        <span className="text-sm text-gray-300">Falha ao verificar atualizações</span>
+        <button
+          onClick={() => setStatus('idle')}
+          className="text-gray-500 hover:text-white transition-colors p-1"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    );
+  }
 
   const handleDownload = () => {
     setIsDownloading(true);
-    window.electronAPI?.updateDownload();
+    setProgress(0);
+    setTransferred(0);
+    setTotal(0);
+    window.electronAPI?.updateDownload().catch(() => setIsDownloading(false));
   };
 
   const handleDismiss = () => {
@@ -188,15 +223,24 @@ export default function UpdateNotification() {
     return (
       <div className="fixed bottom-4 right-4 z-[200] w-96 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl animate-in slide-in-from-bottom-5">
         <div className="p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
               <Check className="w-5 h-5 text-green-400" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-white">Atualização instalada</h3>
-              <p className="text-xs text-gray-400">Reiniciando...</p>
+              <h3 className="text-sm font-semibold text-white">Atualização baixada</h3>
+              <p className="text-xs text-gray-400">
+                {updateInfo ? `v${updateInfo.version} pronta para instalar` : 'Pronta para instalar'}
+              </p>
             </div>
           </div>
+          <button
+            onClick={() => window.electronAPI?.updateInstall()}
+            className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={16} />
+            Reiniciar agora
+          </button>
         </div>
       </div>
     );

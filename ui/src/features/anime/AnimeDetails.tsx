@@ -127,7 +127,11 @@ export default function AnimeDetails() {
       const response = await fetch(`/api/trailer-search?q=${encodeURIComponent(title)}`);
       if (response.ok) {
         const data = await response.json();
-        setFallbackTrailer(data);
+        // Only commit a valid id — otherwise the button stays retryable
+        if (isValidVideoId(data?.videoId)) {
+          setFallbackTrailer(data);
+          setShowTrailer(true);
+        }
       }
     } catch (err) {
       console.error('Failed to search trailer:', err);
@@ -329,27 +333,25 @@ export default function AnimeDetails() {
                 </button>
               )}
 
-              {(hasTrailer || fallbackTrailer || loadingTrailer) && (
-                <button
-                  onClick={() => {
-                    if (hasTrailer) {
-                      setShowTrailer(true);
-                    } else if (!fallbackTrailer) {
-                      searchTrailer();
-                    } else {
-                      setShowTrailer(true);
-                    }
-                  }}
-                  disabled={loadingTrailer}
-                  className="p-3 rounded-lg text-gray-400 hover:bg-purple-500/20 hover:text-white transition-all duration-300 hover:scale-110 active:scale-95 disabled:opacity-50"
-                >
-                  {loadingTrailer ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <Film size={18} />
-                  )}
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  if (hasTrailer) {
+                    setShowTrailer(true);
+                  } else if (!fallbackTrailer) {
+                    searchTrailer();
+                  } else {
+                    setShowTrailer(true);
+                  }
+                }}
+                disabled={loadingTrailer}
+                className="p-3 rounded-lg text-gray-400 hover:bg-purple-500/20 hover:text-white transition-all duration-300 hover:scale-110 active:scale-95 disabled:opacity-50"
+              >
+                {loadingTrailer ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Film size={18} />
+                )}
+              </button>
             </div>
 
             <h1 className="text-3xl md:text-4xl font-bold mb-2">

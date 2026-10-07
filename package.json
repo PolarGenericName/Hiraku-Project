@@ -1,6 +1,6 @@
 {
   "name": "hiraku",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Aplicativo de transmissão de anime",
   "author": "Hiraku Project",
   "type": "module",
@@ -15,9 +15,9 @@
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
     "electron": "concurrently \"tsx server/index.ts\" \"vite --host\" \"cross-env ELECTRON_DEV=1 electron .\"",
-    "electron:build": "tsc --noEmit && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --win --arm64",
-    "electron:build:linux": "tsc --noEmit && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --linux",
-    "dist": "tsc --noEmit && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --win --arm64 --linux"
+    "electron:build": "tsc --noEmit && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --win nsis:x64 nsis:arm64",
+    "electron:build:linux": "tsc --noEmit && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --linux tar.gz:x64",
+    "dist": "tsc --noEmit && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=cjs --outfile=dist/index.cjs && electron-builder --win nsis:x64 nsis:arm64 --linux tar.gz:x64"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",

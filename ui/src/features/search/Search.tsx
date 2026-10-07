@@ -102,6 +102,7 @@ export default function Search() {
 
   // Load default animes on mount
   useEffect(() => {
+    let cancelled = false;
     const loadDefault = async () => {
       try {
         setDefaultLoading(true);
@@ -111,6 +112,8 @@ export default function Search() {
           getUpcomingAnime(1, 25),
           getSeasonalAnime('SPRING', new Date().getFullYear(), 1, 25),
         ]);
+
+        if (cancelled) return;
 
         // Combine and deduplicate
         const combined = [...trending];
@@ -126,23 +129,28 @@ export default function Search() {
       } catch (err) {
         console.error('Error loading default animes:', err);
       } finally {
-        setDefaultLoading(false);
+        if (!cancelled) setDefaultLoading(false);
       }
     };
 
     loadDefault();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Search when query or filters change
   useEffect(() => {
     const search = async () => {
+      const requestId = ++searchRequestIdRef.current;
+
       if (!query.trim() && !Object.values(filters).some(Boolean)) {
         setResults([]);
         setHasSearched(false);
+        setLoading(false);
+        setCheckingAvailability(false);
         return;
       }
-
-      const requestId = ++searchRequestIdRef.current;
 
       try {
         setLoading(true);
@@ -195,7 +203,11 @@ export default function Search() {
     };
 
     const debounce = setTimeout(search, 500);
-    return () => clearTimeout(debounce);
+    return () => {
+      clearTimeout(debounce);
+      // Invalidate any in-flight request from this effect run
+      searchRequestIdRef.current++;
+    };
   }, [query, filters]);
 
   const handleSearch = (e: React.FormEvent) => {

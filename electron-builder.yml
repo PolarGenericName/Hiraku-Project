@@ -12,6 +12,7 @@ files:
   - dist/**/*
   - node_modules/**/*
   - package.json
+  - assets/logo.png
 
 extraResources:
   - from: assets/logo.png
@@ -20,6 +21,9 @@ extraResources:
 win:
   target:
     - target: nsis
+      arch:
+        - x64
+        - arm64
   icon: assets/icons/icon.ico
   artifactName: "Hiraku-Setup-${version}-${arch}.exe"
 
@@ -41,7 +45,7 @@ linux:
         - x64
   icon: assets/icons
   category: AudioVideo
-  artifactName: "Hiraku-${version}-linux-x64.tar.gz"
+  artifactName: "Hiraku-${version}-linux-${arch}.tar.gz"
 
 publish:
   provider: github
