@@ -4,7 +4,7 @@
 
 # Hiraku
 
-[![Version](https://img.shields.io/badge/version-1.0.0-purple)](https://github.com/PolarGenericName/Hiraku-Project/releases)
+[![Version](https://img.shields.io/badge/version-1.0.2-purple)](https://github.com/PolarGenericName/Hiraku-Project/releases)
 
 [Características](#características) • [Download](#download) • [Atalhos](#atalhos-do-player) • [Screenshots](#screenshots) • [Licença](#licença)
 
