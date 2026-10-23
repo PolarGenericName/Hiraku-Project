@@ -40,12 +40,12 @@ Escolha a versão para o seu sistema operacional:
 
 ### Windows
 
-[![Windows x64](https://img.shields.io/badge/Windows_x64-download-purple?style=for-the-badge)](https://github.com/PolarGenericName/Hiraku-Project/releases/download/v1.0.0/Hiraku-Setup-1.0.0-x64.exe)
-[![Windows ARM64](https://img.shields.io/badge/Windows_ARM64-download-purple?style=for-the-badge)](https://github.com/PolarGenericName/Hiraku-Project/releases/download/v1.0.0/Hiraku-Setup-1.0.0-arm64.exe)
+[![Windows x64](https://img.shields.io/badge/Windows_x64-download-purple?style=for-the-badge)](https://github.com/PolarGenericName/Hiraku-Project/releases/download/v1.0.2/Hiraku-Setup-1.0.2-x64.exe)
+[![Windows ARM64](https://img.shields.io/badge/Windows_ARM64-download-purple?style=for-the-badge)](https://github.com/PolarGenericName/Hiraku-Project/releases/download/v1.0.2/Hiraku-Setup-1.0.2-arm64.exe)
 
 ### Linux
 
-[![Linux x64](https://img.shields.io/badge/Linux_x64-download-orange?style=for-the-badge)](https://github.com/PolarGenericName/Hiraku-Project/releases/download/v1.0.0/Hiraku-1.0.0-linux-x64.tar.gz)
+[![Linux x64](https://img.shields.io/badge/Linux_x64-download-orange?style=for-the-badge)](https://github.com/PolarGenericName/Hiraku-Project/releases/download/v1.0.2/Hiraku-1.0.2-linux-x64.tar.gz)
 
 > **Nota:** A versão Linux é experimental.
 
