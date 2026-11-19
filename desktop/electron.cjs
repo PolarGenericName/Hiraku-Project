@@ -433,9 +433,11 @@ if (!gotTheLock) {
   app.whenReady().then(async () => {
     app.setName('Hiraku');
 
-    // The app never uses camera/mic/geo/notifications — deny everything
-    session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => {
-      callback(false);
+    // The app never uses camera/mic/geo/notifications — deny everything.
+    // Fullscreen stays allowed: the web Fullscreen API requests it through
+    // this handler and is silently rejected otherwise.
+    session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+      callback(permission === 'fullscreen');
     });
 
     await startServer();
