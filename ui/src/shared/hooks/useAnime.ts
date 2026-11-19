@@ -3,7 +3,7 @@
  * AniList para catálogo + provider PT-BR para episódios
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   getTrendingAnime,
   getPopularAnime,
@@ -180,8 +180,7 @@ export function useAnimeDetails(id: number | null): UseAnimeDetailsResult {
           media.title.english,
           media.seasonYear,
           media.episodes,
-          media.status,
-          media.title.native
+          media.status
         );
 
         if (ignore) return;

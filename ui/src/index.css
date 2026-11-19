@@ -201,6 +201,12 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Imagens e links nunca arrastáveis (segurar não solta link do localhost) */
+img,
+a {
+  -webkit-user-drag: none;
+}
+
 input, textarea, [contenteditable="true"] {
   user-select: text;
   -webkit-user-select: text;
@@ -297,6 +303,231 @@ html::-webkit-scrollbar-thumb:hover {
   to {
     opacity: 1;
   }
+}
+
+/* ── Modo Mangás (Hiraku Parte 2) ─────────────────────────────────────────── */
+
+/* Fundo sólido (não mascarado): cobre a troca de tela e dá base preta
+   para a pincelada — mesmo fade de vida da colagem */
+.train-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+  background: #000;
+  pointer-events: none;
+  animation: trainLife 2.8s ease both;
+}
+
+/* ── Troca de modo: colagem de imagens (train in, train out) ────────────────
+   Seis faixas horizontais com ordem embaralhada e velocidade própria —
+   mangás andam para a direita, animes para a esquerda. Duotone cinza+roxo,
+   vinheta suave nos cantos e revelação em pincelada (máscara SVG orgânica):
+   mangás pintam da esquerda→direita, animes da direita→esquerda. */
+.train-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #000;
+  pointer-events: none;
+  /* máscara: pincelada (varre) ∩ vinheta dos cantos */
+  -webkit-mask-image:
+    var(--brush),
+    radial-gradient(circle at 0% 0%, transparent 0%, #000 32%),
+    radial-gradient(circle at 100% 0%, transparent 0%, #000 32%),
+    radial-gradient(circle at 0% 100%, transparent 0%, #000 32%),
+    radial-gradient(circle at 100% 100%, transparent 0%, #000 32%);
+  mask-image:
+    var(--brush),
+    radial-gradient(circle at 0% 0%, transparent 0%, #000 32%),
+    radial-gradient(circle at 100% 0%, transparent 0%, #000 32%),
+    radial-gradient(circle at 0% 100%, transparent 0%, #000 32%),
+    radial-gradient(circle at 100% 100%, transparent 0%, #000 32%);
+  -webkit-mask-size: 320% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  mask-size: 320% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+  -webkit-mask-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  mask-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  -webkit-mask-composite: source-in, source-in, source-in, source-in;
+  mask-composite: intersect, intersect, intersect, intersect;
+  animation:
+    trainLife 2.8s ease both,
+    var(--paint, trainPaintLTR) 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+/* Mangás: pincelada puxa da esquerda para a direita */
+.train-ltr {
+  --brush: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400' preserveAspectRatio='none'%3E%3Cfilter id='b' x='-25%25' y='-25%25' width='150%25' height='150%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.06' numOctaves='3' seed='7' result='n'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='n' scale='70' xChannelSelector='R' yChannelSelector='G'/%3E%3C/filter%3E%3Crect x='-2000' y='-100' width='2600' height='600' fill='white' filter='url(%23b)'/%3E%3C/svg%3E");
+  --paint: trainPaintLTR;
+}
+
+/* Animes: pincelada puxa da direita para a esquerda (espelhada) */
+.train-rtl {
+  --brush: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400' preserveAspectRatio='none'%3E%3Cfilter id='b' x='-25%25' y='-25%25' width='150%25' height='150%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.06' numOctaves='3' seed='4' result='n'/%3E%3CfeDisplacementMap in='SourceGraphic' in2='n' scale='70' xChannelSelector='R' yChannelSelector='G'/%3E%3C/filter%3E%3Cg transform='translate(600,0) scale(-1,1)'%3E%3Crect x='-2000' y='-100' width='2600' height='600' fill='white' filter='url(%23b)'/%3E%3C/g%3E%3C/svg%3E");
+  --paint: trainPaintRTL;
+}
+
+@keyframes trainPaintLTR {
+  from {
+    -webkit-mask-position: 150% 0, 0 0, 0 0, 0 0, 0 0;
+    mask-position: 150% 0, 0 0, 0 0, 0 0, 0 0;
+  }
+  to {
+    -webkit-mask-position: 0% 0, 0 0, 0 0, 0 0, 0 0;
+    mask-position: 0% 0, 0 0, 0 0, 0 0, 0 0;
+  }
+}
+
+@keyframes trainPaintRTL {
+  /* do -50% (borda fora à direita) até 50% (borda fora à esquerda) —
+     termina limpo, sem borda presa no canto como em position 0% */
+  from {
+    -webkit-mask-position: -50% 0, 0 0, 0 0, 0 0, 0 0;
+    mask-position: -50% 0, 0 0, 0 0, 0 0, 0 0;
+  }
+  to {
+    -webkit-mask-position: 50% 0, 0 0, 0 0, 0 0, 0 0;
+    mask-position: 50% 0, 0 0, 0 0, 0 0, 0 0;
+  }
+}
+
+@keyframes trainLife {
+  0% {
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Duotone: cinza com um toque do roxo escuro do tema */
+.train-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #4c1d95;
+  mix-blend-mode: color;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Cada faixa corre na sua velocidade (via --dur) */
+.train-band {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  width: max-content;
+  animation: trainFlow var(--dur, 8s) linear infinite;
+  will-change: transform;
+}
+
+@keyframes trainFlow {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Mangás: a colagem anda para a direita (animes: para a esquerda = base) */
+.train-ltr .train-band {
+  animation-direction: reverse;
+}
+
+.train-card {
+  height: 100%;
+  width: auto;
+  flex-shrink: 0;
+  object-fit: cover;
+  display: block;
+  /* base cinza do duotone (o tom roxo vem do ::after com blend) */
+  filter: grayscale(1) brightness(0.72) contrast(1.06);
+}
+
+/* Fade-through entre telas (200ms, estilo Mihon) — só opacidade para
+   não criar contexto de transformação (afetaria o leitor fixed) */
+@keyframes fadeThrough {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-through {
+  animation: fadeThrough 0.2s ease-out;
+}
+
+/* Troca do conjunto de menus ao alternar o modo */
+.nav-swap {
+  animation: fadeThrough 0.2s ease-out;
+}
+
+/* Barra de progresso do leitor */
+.reader-progress {
+  transition: width 0.15s ease-out;
+}
+
+/* Scrollbar temática do leitor (roxa como o app) */
+/* Scrollbar temática do app (roxa como o tema) — vale pra janela e containers */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #7c3aed transparent;
+}
+
+html::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+  background: #7c3aed;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: #8b5cf6;
+  background-clip: content-box;
+}
+
+.reader-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.reader-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.reader-scroll::-webkit-scrollbar-thumb {
+  background: #7c3aed;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.reader-scroll::-webkit-scrollbar-thumb:hover {
+  background: #8b5cf6;
+  background-clip: content-box;
+}
+
+.reader-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #7c3aed transparent;
 }
 
 /* Page flip loading animation - From Uiverse.io by vk-uiux */

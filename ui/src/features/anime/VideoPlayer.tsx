@@ -7,6 +7,13 @@ import {
 } from 'lucide-react';
 import type { EpisodeStream } from '@/providers/types';
 import { saveEpisodeProgress, getResumeTime } from '@/shared/lib/watchProgress';
+import {
+  getPlaybackRate,
+  isAutoplayEnabled,
+  isHistoryEnabled,
+  isResumeEnabled,
+  setPlaybackRate as savePlaybackRate,
+} from '@/shared/lib/prefs';
 import { useAccount } from '@/contexts/AccountContext';
 
 interface VideoPlayerProps {
@@ -44,10 +51,14 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [selectedAudio, setSelectedAudio] = useState<'dublado' | 'legendado'>('legendado');
-  const [playbackRate, setPlaybackRate] = useState(1);
+  const [playbackRate, setPlaybackRate] = useState(() => getPlaybackRate());
   const [isBuffering, setIsBuffering] = useState(true);
   const [qualities, setQualities] = useState<any[]>([]);
   const [selectedQuality, setSelectedQuality] = useState<number>(-1);
+
+  // Sempre atual: evita closure obsoleta do callback no effect do player
+  const onNextEpisodeRef = useRef(onNextEpisode);
+  onNextEpisodeRef.current = onNextEpisode;
 
   const dubStream = stream.streams.find(s => s.audio === 'dublado');
   const legStream = stream.streams.find(s => s.audio === 'legendado');
@@ -100,7 +111,7 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
       const yearText = animeYear ? String(animeYear) : '';
       const metaText = [genreText, yearText].filter(Boolean).join(' • ');
       const episodeLabel = `T${stream.season} E${stream.number}`;
-      const episodeName = stream.title ? ` — ${stream.title}` : '';
+      const episodeName = stream.title ? ` · ${stream.title}` : '';
       const payload: any = {
         details: animeTitle || stream.title || '',
         state: `${episodeLabel}${episodeName}`,
@@ -120,15 +131,17 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
     const onPlay = () => {
       setIsPlaying(true);
       setIsBuffering(false);
-      addToHistory({
-        animeId,
-        animeTitle: animeTitle || stream.title || '',
-        animeCover: animeCover || '',
-        episodeId: stream.episodeId,
-        episodeNumber: stream.number,
-        season: stream.season,
-        watchedAt: Date.now(),
-      });
+      if (isHistoryEnabled()) {
+        addToHistory({
+          animeId,
+          animeTitle: animeTitle || stream.title || '',
+          animeCover: animeCover || '',
+          episodeId: stream.episodeId,
+          episodeNumber: stream.number,
+          season: stream.season,
+          watchedAt: Date.now(),
+        });
+      }
       window.electronAPI?.setActivity(buildDiscordPayload(true));
     };
     const onPause = () => {
@@ -147,7 +160,8 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
     };
     const onLoadedMetadata = () => {
       setDuration(video.duration);
-      const resumeTime = getResumeTime(animeId, stream.episodeId);
+      video.playbackRate = playbackRate;
+      const resumeTime = isResumeEnabled() ? getResumeTime(animeId, stream.episodeId) : 0;
       if (resumeTime > 0 && video.currentTime === 0) {
         video.currentTime = resumeTime;
       }
@@ -163,6 +177,10 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
         saveEpisodeProgress(animeId, stream.episodeId, stream.number, stream.season, video.duration, video.duration);
       }
       window.electronAPI?.clearActivity();
+      // Autoplay: passa direto para o próximo episódio quando habilitado
+      if (isAutoplayEnabled() && stream.nextEpisode) {
+        onNextEpisodeRef.current?.();
+      }
     };
 
     video.addEventListener('play', onPlay);
@@ -577,7 +595,7 @@ export default function VideoPlayer({ stream, animeId, animeTitle, animeCover, a
                   {SPEED_OPTIONS.map((speed) => (
                     <button
                       key={speed}
-                      onClick={() => { setPlaybackRate(speed); setShowSpeedMenu(false); setShowSettings(false); }}
+                      onClick={() => { setPlaybackRate(speed); savePlaybackRate(speed); setShowSpeedMenu(false); setShowSettings(false); }}
                       className={`w-full text-left px-4 py-2.5 text-sm transition-colors rounded-lg mx-1 ${
                         playbackRate === speed ? 'bg-accent text-white font-medium' : 'text-foreground hover:bg-muted/50'
                       }`}

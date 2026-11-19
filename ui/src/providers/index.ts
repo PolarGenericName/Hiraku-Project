@@ -76,8 +76,7 @@ export async function findAnimeSlug(
   englishTitle?: string,
   anilistYear?: number,
   anilistEpisodes?: number,
-  anilistStatus?: string,
-  nativeTitle?: string
+  anilistStatus?: string
 ): Promise<string | null> {
   // Skip search for anime not yet released
   if (anilistStatus === 'NOT_YET_RELEASED') {
@@ -313,7 +312,7 @@ async function findAnimeSlugQuick(
  * Verifies episode count matches AniList data.
  */
 export async function batchCheckAvailability(
-  animes: { id: string; title: string; titleAlternative?: string; nativeTitle?: string; year?: number; episodes?: number; status?: string }[]
+  animes: { id: string; title: string; titleAlternative?: string; year?: number; episodes?: number; status?: string }[]
 ): Promise<Set<string>> {
   const available = new Set<string>();
 
@@ -321,7 +320,7 @@ export async function batchCheckAvailability(
   const batchSize = 5;
   for (let i = 0; i < animes.length; i += batchSize) {
     const batch = animes.slice(i, i + batchSize);
-    const results = await Promise.allSettled(
+    await Promise.allSettled(
       batch.map(async (anime) => {
         const slug = await findAnimeSlugQuick(anime.title, anime.titleAlternative, anime.year);
         if (slug) {

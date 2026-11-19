@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useLocation } from 'wouter';
 import {
   useHeroAnimes,
-  useTrendingAnime,
   usePopularAnime,
   useSeasonalAnime,
   useAnimeByGenre,
@@ -26,13 +25,6 @@ function getCurrentYear() {
   return new Date().getFullYear();
 }
 
-const seasonLabels: Record<string, string> = {
-  WINTER: 'Inverno',
-  SPRING: 'Primavera',
-  SUMMER: 'Verão',
-  FALL: 'Outono',
-};
-
 export default function Home() {
   const [, setLocation] = useLocation();
   const [heroIndex, setHeroIndex] = useState(0);
@@ -42,7 +34,6 @@ export default function Home() {
   const watchHistory = getHistory();
 
   const { animes: heroAnimes, loading: loadingHero } = useHeroAnimes(5);
-  const { animes: trending } = useTrendingAnime(20);
   const { animes: popular } = usePopularAnime(20);
   const { animes: seasonal } = useSeasonalAnime(
     getCurrentSeason(),
@@ -94,8 +85,7 @@ export default function Home() {
             anime.title?.english,
             anime.seasonYear,
             anime.episodes,
-            anime.status,
-            anime.title?.native
+            anime.status
           );
           if (slug) {
             const details = await getAnimeDetails(slug);

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { searchAniList, anilistToAnimeResult, filterSeasonDuplicates } from '@/shared/lib/anilist';
 import { batchCheckAvailability } from '@/providers';
-import { Play, Bookmark } from 'lucide-react';
+import { Bookmark } from 'lucide-react';
 import LoadingAnimation from '@/shared/components/LoadingAnimation';
 import { useAccount } from '@/contexts/AccountContext';
 
@@ -27,7 +27,6 @@ export default function FilterPage({ format, title }: FilterPageProps) {
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState<number | undefined>(undefined);
   const [genre, setGenre] = useState<string | undefined>(undefined);
-  const [availableIds, setAvailableIds] = useState<Set<string>>(new Set());
 
   const { toggleSavedAnime, isSaved } = useAccount();
 
@@ -56,13 +55,11 @@ export default function FilterPage({ format, title }: FilterPageProps) {
               id: anime.id.toString(),
               title: anime.title?.romaji || anime.title?.english || '',
               titleAlternative: anime.title?.english,
-              nativeTitle: anime.title?.native,
               year: anime.seasonYear,
               episodes: anime.episodes,
               status: anime.status,
             }));
             const available = await batchCheckAvailability(animesToCheck);
-            setAvailableIds(available);
 
             // Filter to only show available anime
             if (available.size > 0) {

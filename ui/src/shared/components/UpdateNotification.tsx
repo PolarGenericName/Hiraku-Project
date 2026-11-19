@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Download, X, ArrowDownToLine, Check, RefreshCw, AlertTriangle } from 'lucide-react';
+import { isAutoUpdateCheckEnabled } from '@/shared/lib/prefs';
 
 const isElectron = typeof window !== 'undefined' && !!window.electronAPI;
 
@@ -103,7 +104,7 @@ export default function UpdateNotification() {
       }),
     ];
 
-    if (!sessionStorage.getItem('update-checked')) {
+    if (!sessionStorage.getItem('update-checked') && isAutoUpdateCheckEnabled()) {
       sessionStorage.setItem('update-checked', '1');
       api.updateCheck().catch(() => {});
     }

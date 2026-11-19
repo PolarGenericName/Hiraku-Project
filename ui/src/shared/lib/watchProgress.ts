@@ -3,6 +3,8 @@
  * Salva no localStorage: posição atual, episódios assistidos, etc.
  */
 
+import { isProgressTrackingEnabled } from './prefs';
+
 const STORAGE_KEY = 'hiraku-watch-progress';
 
 export interface EpisodeProgress {
@@ -27,9 +29,11 @@ export interface AnimeProgress {
   animeId: string;
   /** Mapa de progresso por episodeId */
   episodes: Record<string, EpisodeProgress>;
+  /** Total de episódios do anime, quando conhecido (stats: "anime completo") */
+  totalEpisodes?: number;
 }
 
-type ProgressData = Record<string, AnimeProgress>;
+export type ProgressData = Record<string, AnimeProgress>;
 
 function getAll(): ProgressData {
   try {
@@ -72,7 +76,7 @@ function saveAll(data: ProgressData) {
   }
 }
 
-/** Salva progresso de um episódio */
+/** Salva progresso de um episódio (no-op se o rastreio está desligado) */
 export function saveEpisodeProgress(
   animeId: string,
   episodeId: string,
@@ -81,6 +85,7 @@ export function saveEpisodeProgress(
   currentTime: number,
   duration: number
 ) {
+  if (!isProgressTrackingEnabled()) return;
   const data = getAll();
   if (!data[animeId]) {
     data[animeId] = { animeId, episodes: {} };
@@ -99,6 +104,21 @@ export function saveEpisodeProgress(
   };
 
   saveAll(data);
+}
+
+/** Persiste o total de episódios do anime (para as estatísticas). */
+export function setAnimeTotalEpisodes(animeId: string, total: number): void {
+  if (!Number.isFinite(total) || total <= 0) return;
+  const data = getAll();
+  const current = data[animeId];
+  if (!current || current.totalEpisodes === total) return;
+  data[animeId] = { ...current, totalEpisodes: total };
+  saveAll(data);
+}
+
+/** Dados crus de todos os animes com progresso (estatísticas). */
+export function getAllAnimeProgress(): ProgressData {
+  return getAll();
 }
 
 /** Retorna progresso de um episódio específico */

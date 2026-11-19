@@ -1,6 +1,7 @@
-const { app, BrowserWindow, ipcMain, session } = require('electron');
+const { app, BrowserWindow, ipcMain, session, dialog, safeStorage } = require('electron');
 const path = require('path');
 const http = require('http');
+const fs = require('fs');
 const { initUpdater } = require('./updater.cjs');
 let Client;
 try {
@@ -132,6 +133,9 @@ async function initDiscord() {
 
 ipcMain.handle('discord-set-activity', (event, activity) => {
   if (!isTrustedSender(event)) return false;
+  // Presença desligada em Configurações: ignora qualquer setActivity
+  // (player de anime / leitor de mangá continuam chamando durante o uso)
+  if (discordStopped) return false;
   if (!rpc || !rpcReady) return false;
   try {
     const pid = process.pid;
@@ -181,6 +185,47 @@ ipcMain.handle('discord-clear-activity', (event) => {
     console.error('[Discord] clearActivity error:', err.message);
     return false;
   }
+});
+
+// Liga/desliga a presença (toggle em Configurações → Presença do Discord)
+ipcMain.handle('discord-set-enabled', async (event, enabled) => {
+  if (!isTrustedSender(event)) return false;
+  if (enabled) {
+    if (discordStopped) {
+      discordStopped = false;
+      initDiscord();
+    }
+  } else {
+    discordStopped = true;
+    if (discordReconnectTimer) {
+      clearTimeout(discordReconnectTimer);
+      discordReconnectTimer = null;
+    }
+    // Derruba a conexão inteira: sem conexão não há presença nenhuma
+    // (e o gate em discord-set-activity impede reativar durante o uso)
+    if (rpc) {
+      const old = rpc;
+      const wasReady = rpcReady;
+      rpc = null;
+      rpcReady = false;
+      old.removeAllListeners();
+      if (wasReady) {
+        try {
+          // espera o clear chegar ao Discord antes de fechar o socket
+          await old.clearActivity();
+        } catch {
+          /* ignora */
+        }
+      }
+      try {
+        const destroyed = old.destroy();
+        if (destroyed && typeof destroyed.catch === 'function') destroyed.catch(() => {});
+      } catch {
+        /* ignora */
+      }
+    }
+  }
+  return true;
 });
 
 // ── Window ───────────────────────────────────────────────────────────────────
@@ -307,6 +352,69 @@ ipcMain.handle('window-close', (event) => {
 ipcMain.handle('window-is-maximized', (event) => {
   if (!isTrustedSender(event)) return false;
   return mainWindow?.isMaximized() ?? false;
+});
+
+// ── IPC: Backup ──────────────────────────────────────────────────────────────
+/** Pasta padrão dos backups: Documentos/Hiraku/Backups (criada sob demanda). */
+function defaultBackupDir() {
+  return path.join(app.getPath('documents'), 'Hiraku', 'Backups');
+}
+
+ipcMain.handle('backup-default-dir', (event) => {
+  if (!isTrustedSender(event)) return null;
+  return defaultBackupDir();
+});
+
+ipcMain.handle('backup-select-folder', async (event) => {
+  if (!isTrustedSender(event)) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Selecionar pasta de backup',
+    properties: ['openDirectory', 'createDirectory'],
+  });
+  if (result.canceled || !result.filePaths[0]) return null;
+  return result.filePaths[0];
+});
+
+ipcMain.handle('backup-write', async (event, dir, fileName, content) => {
+  if (!isTrustedSender(event)) return false;
+  if (typeof dir !== 'string' || typeof content !== 'string') return false;
+  if (typeof fileName !== 'string' || path.basename(fileName) !== fileName) return false;
+  try {
+    await fs.promises.mkdir(dir, { recursive: true });
+    await fs.promises.writeFile(path.join(dir, fileName), content, 'utf8');
+    return true;
+  } catch (err) {
+    console.error('[Backup] falha ao gravar:', err.message);
+    return false;
+  }
+});
+
+// ── IPC: Criptografia local (safeStorage = chaveiro do SO) ───────────────────
+// Síncrono de propósito: a camada de storage do app é síncrona e só troca
+// credenciais pequenas (tokens de tracker). Sem safeStorage disponível o
+// resultado é null e o app segue sem criptografia.
+ipcMain.on('data-encrypt', (event, text) => {
+  if (!isTrustedSender(event) || typeof text !== 'string' || !safeStorage.isEncryptionAvailable()) {
+    event.returnValue = null;
+    return;
+  }
+  try {
+    event.returnValue = safeStorage.encryptString(text).toString('base64');
+  } catch {
+    event.returnValue = null;
+  }
+});
+
+ipcMain.on('data-decrypt', (event, text) => {
+  if (!isTrustedSender(event) || typeof text !== 'string') {
+    event.returnValue = null;
+    return;
+  }
+  try {
+    event.returnValue = safeStorage.decryptString(Buffer.from(text, 'base64'));
+  } catch {
+    event.returnValue = null;
+  }
 });
 
 // ── App ──────────────────────────────────────────────────────────────────────

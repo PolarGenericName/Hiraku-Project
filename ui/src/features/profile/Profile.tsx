@@ -160,7 +160,7 @@ function getTimeAgo(timestamp: number): string {
 }
 
 export default function Profile() {
-  const { account, updateAvatar, updateName, clearHistory, toggleSavedAnime, getHistory, getSavedAnimes } = useAccount();
+  const { account, updateAvatar, updateName, clearHistory, getHistory, getSavedAnimes } = useAccount();
   const [, setLocation] = useLocation();
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(account?.name || '');

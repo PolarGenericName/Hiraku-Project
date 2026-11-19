@@ -31,7 +31,7 @@ const GENRE_VALUES = [
 ];
 
 export default function Search() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const searchString = useSearch();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
@@ -167,7 +167,6 @@ export default function Search() {
               id: anime.id.toString(),
               title: anime.title?.romaji || anime.title?.english || '',
               titleAlternative: anime.title?.english,
-              nativeTitle: anime.title?.native,
               year: anime.seasonYear,
               episodes: anime.episodes,
               status: anime.status,
@@ -369,13 +368,10 @@ export default function Search() {
               {displayAnimes
                 .map((anime) => {
                   const result = anilistToAnimeResult(anime);
-                  const isAvailable = availableIds.has(anime.id.toString());
                   return (
                     <AnimeCard
                       key={result.id}
                       result={result}
-                      isAvailable={isAvailable}
-                      showAvailability={results.length > 0}
                       isFavorite={isSaved(result.id)}
                       onToggleFavorite={toggleFavorite}
                       onClick={() => setLocation(`/anime/${result.id}`)}
@@ -433,15 +429,11 @@ function FilterSelect({
 
 function AnimeCard({
   result,
-  isAvailable,
-  showAvailability,
   isFavorite,
   onToggleFavorite,
   onClick,
 }: {
   result: any;
-  isAvailable: boolean;
-  showAvailability: boolean;
   isFavorite: boolean;
   onToggleFavorite: (id: string, e: React.MouseEvent) => void;
   onClick: () => void;

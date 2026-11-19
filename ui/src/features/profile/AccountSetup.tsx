@@ -1,7 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, type ChangeEvent } from 'react';
 import { useAccount } from '@/contexts/AccountContext';
 import { Upload, User, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { applyBackup, parseBackup } from '@/shared/lib/backup';
+import { useConfirm } from '@/shared/components/ConfirmDialog';
 
 export default function AccountSetup() {
   const { createAccount } = useAccount();
@@ -9,6 +11,8 @@ export default function AccountSetup() {
   const [avatar, setAvatar] = useState<string>('');
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const backupRef = useRef<HTMLInputElement>(null);
+  const { confirm, dialog } = useConfirm();
 
   const handleFile = (file: File) => {
     if (file.size > 10 * 1024 * 1024) {
@@ -45,6 +49,33 @@ export default function AccountSetup() {
     createAccount(name.trim(), avatar || '');
     toast.success('Conta criada!');
   };
+
+  async function handleImportBackup(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    let payload: ReturnType<typeof parseBackup>;
+    try {
+      payload = parseBackup(await file.text());
+    } catch {
+      payload = null;
+    }
+    if (!payload) {
+      toast.error('Arquivo de backup inválido');
+      return;
+    }
+    const ok = await confirm({
+      title: 'Importar backup?',
+      description: `Os dados atuais serão substituídos pelos do backup de ${new Date(
+        payload.createdAt
+      ).toLocaleString('pt-BR')}. O app vai recarregar.`,
+      confirmLabel: 'Importar',
+    });
+    if (!ok) return;
+    applyBackup(payload);
+    toast.success('Backup importado. Recarregando...');
+    setTimeout(() => window.location.reload(), 900);
+  }
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-4">
@@ -110,13 +141,32 @@ export default function AccountSetup() {
         </div>
 
         {/* Submit */}
-        <button
-          onClick={handleSubmit}
-          className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
-        >
-          Começar
-          <ArrowRight size={18} />
-        </button>
+        <div className="space-y-3">
+          <button
+            onClick={handleSubmit}
+            className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+          >
+            Começar
+            <ArrowRight size={18} />
+          </button>
+
+          <button
+            onClick={() => backupRef.current?.click()}
+            className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <Upload size={16} />
+            Importar backup
+          </button>
+          <input
+            ref={backupRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={handleImportBackup}
+          />
+        </div>
+
+        {dialog}
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import {
   getEpisodeProgressPercent,
   getNextUnwatchedEpisode,
   getContinueWatchingEpisode,
+  setAnimeTotalEpisodes,
 } from '@/shared/lib/watchProgress';
 
 export default function AnimeDetails() {
@@ -22,11 +23,11 @@ export default function AnimeDetails() {
 
   const { anime, providerSlug, providerDetails, loading, error } = useAnimeDetails(animeId);
 
-  const { seasons, loading: loadingSeasons } = useSeasons(providerSlug);
+  const { seasons } = useSeasons(providerSlug);
   const [selectedSeason, setSelectedSeason] = useState<number | undefined>(undefined);
 
   const { episodes, loading: loadingEpisodes } = useEpisodes(providerSlug, selectedSeason);
-  const { recommendations, loading: loadingRecs } = useRecommendations(providerSlug);
+  const { recommendations } = useRecommendations(providerSlug);
 
   const [selectedEpisode, setSelectedEpisode] = useState<string | null>(null);
   const [episodeQuery, setEpisodeQuery] = useState('');
@@ -146,6 +147,17 @@ export default function AnimeDetails() {
       setSelectedSeason(seasons[0].number);
     }
   }, [seasons, selectedSeason]);
+
+  // Persiste o total de episódios do anime (estatísticas: "anime completo")
+  useEffect(() => {
+    if (!animeId) return;
+    const total =
+      anime?.episodes ??
+      (seasons.length > 0
+        ? seasons.reduce((sum, s) => sum + (s.episodeCount || 0), 0)
+        : 0);
+    if (total > 0) setAnimeTotalEpisodes(String(animeId), total);
+  }, [animeId, anime?.episodes, seasons]);
 
   // Reset season when slug changes
   useEffect(() => {
